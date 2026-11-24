@@ -92,9 +92,9 @@ void run_probe() {
   static silica::Cpu cpu;
   cpu.reset();
   cpu.regs.x[3] = kDataBase;
-  cpu.regs.x[1] = 0xDEADBEEF00000006ull;
-  cpu.regs.x[2] = 0xFFFFFFFF00000005ull;
-  cpu.regs.x[4] = 0xAAAAAAAA00000007ull;
+  cpu.regs.x[9] = 0xAAAAAAAA00000007ull;
+  cpu.regs.x[11] = 0xDEADBEEF00000006ull;
+  cpu.regs.x[12] = 0xFFFFFFFF00000005ull;
   cpu.mem.store64(kDataBase, 0x1122334455667788ull);
   for (size_t i = 0; i < kProgram.size(); ++i) {
     cpu.mem.store32(kCodeBase + i * 4, kProgram[i]);
