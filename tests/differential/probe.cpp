@@ -93,7 +93,7 @@ void run_probe() {
   }
   cpu.regs.pc = kCodeBase;
 
-  for (size_t step = 0; step < kProgram.size(); ++step) {
+  for (size_t step = 0; step < kExecutedSteps; ++step) {
     cpu.run(1);
     if (cpu.mem.fault() != silica::FaultReason::None || cpu.yielded) {
       std::cerr << "neuro halted/faulted at step " << step
