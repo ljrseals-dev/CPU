@@ -1,0 +1,40 @@
+name: Neuro-Silica CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Native + WASM + Node (${{ matrix.native_cxx }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        native_cxx: [g++, clang++]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install LLVM WebAssembly linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+      - name: Show toolchain
+        run: |
+          ${{ matrix.native_cxx }} --version
+          clang++ --version
+          wasm-ld --version
+          node --version
+      - name: Run complete test target
+        run: |
+          make clean
+          make test CXX=${{ matrix.native_cxx }} WASM_CXX=clang++ WASM_LD=wasm-ld

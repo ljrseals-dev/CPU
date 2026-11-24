@@ -6,7 +6,7 @@ WASM_CXX ?= clang++
 WASM_LD ?= wasm-ld
 NATIVE_FLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Isrc
 WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib -Isrc -Wall -Wextra
-WASM_LDFLAGS ?= --no-entry --export-dynamic --export-memory --allow-undefined --initial-memory=33554432 --max-memory=33554432
+WASM_LDFLAGS ?= --no-entry --export-memory --export=init_cpu --export=step --export=set_reg --export=get_reg --export=get_fault --export=memory_base --export=get_yielded --export=clear_yielded --export=reset_cpu --allow-undefined --initial-memory=33554432 --max-memory=33554432
 SILICA_ALLAH_DIR ?= ../Silica-Allah
 .PHONY: all native wasm test differential clean
 all: native wasm
