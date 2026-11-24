@@ -31,7 +31,7 @@ The test target builds and runs native regressions, builds the WASM module, runs
 Optional pinned-reference state trace (requires a Silica-Allah checkout):
 `make differential SILICA_ALLAH_DIR=../Silica-Allah`
 
-The pre-existing baseline passed the full native/Node/WASM suite under GCC and Clang in GitHub Actions and passed the pinned Silica-Allah lockstep trace for its declared common instruction subset. The current bug-fix branch has passed the GCC/Clang native, WASM, Node, mutation, and pinned-reference differential jobs. Sanitizer results are tracked separately for this branch.
+The pre-existing baseline passed the full native/Node/WASM suite under GCC and Clang in GitHub Actions and passed the pinned Silica-Allah lockstep trace for its declared common instruction subset. The current bug-fix branch passed GitHub Actions run #15: native, WASM, Node, and BL mutation checks under GCC and Clang; native AddressSanitizer/UndefinedBehaviorSanitizer checks under both compilers; and the expanded pinned-reference differential trace.
 
 ## Limitations
 The decoder supports only a small instruction subset; unsupported instructions fault. It is not a general AArch64 emulator. The harness manually invokes the host fallback after SVC yield; it does not prove guest assembly computes MEMT1. No WGSL shader, WebGPU dispatch, staging/readback implementation, guest binary, GUI, or differential GPU test is included.
