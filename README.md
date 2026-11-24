@@ -37,4 +37,4 @@ PR #10's focused fixes passed the full native/Node/WASM suite under GCC and Clan
 The decoder supports only a small instruction subset; unsupported instructions fault. It is not a general AArch64 emulator. The harness manually invokes the host fallback after SVC yield; it does not prove guest assembly computes MEMT1. No WGSL shader, WebGPU dispatch, staging/readback implementation, guest binary, GUI, or differential GPU test is included.
 
 
-The faulting-instruction PC rollback follow-up passed GitHub Actions run #18: GCC, Clang, WASM, Node, sanitizers, and the pinned-reference differential job.
+The faulting-instruction PC rollback follow-up passed GitHub Actions run #18: GCC, Clang, WASM, Node, sanitizers, and the pinned-reference differential job. The 32-bit MADD/MSUB extension passed the same matrix and pinned-reference trace in run #20.
