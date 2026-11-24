@@ -38,3 +38,20 @@ jobs:
         run: |
           make clean
           make test CXX=${{ matrix.native_cxx }} WASM_CXX=clang++ WASM_LD=wasm-ld
+
+  differential:
+    name: Silica-Allah lockstep trace
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Neuro-Silica
+        uses: actions/checkout@v4
+      - name: Check out pinned Silica-Allah reference
+        uses: actions/checkout@v4
+        with:
+          repository: ljrseals-dev/Silica-Allah
+          ref: 92b4e6751111a03b83080d773ed3b1b34a208d01
+          path: Silica-Allah
+      - name: Run per-instruction differential state trace
+        run: |
+          make clean
+          make differential CXX=clang++ SILICA_ALLAH_DIR=Silica-Allah
