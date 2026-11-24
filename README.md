@@ -9,10 +9,10 @@ Neuro-Silica is an early AArch64 execution and MEMT1 fixed-point research protot
 - host/memt1_fallback.mjs: checked JavaScript BigInt fallback.
 - src/silica/cpu.hpp and cpu.cpp: bounded memory and a deliberately limited decoder.
 - src/silica_wasm.cpp: minimal C ABI wrapper using static storage, without a custom allocator.
-- tests/native_core_test.cpp: native branch-condition, BL/RET, SP, bounds, alignment, address-overflow, faulting-PC rollback, endian, shifted-register ADD, and MADD/MSUB regressions.
+- tests/native_core_test.cpp: native branch-condition, BL/RET, SP, bounds, alignment, address-overflow, faulting-PC rollback, endian, shifted-register ADD, 32-/64-bit MADD/MSUB, and faulting-PC regressions.
 - tests/memt1_fallback.test.js: fixed-point, range, alignment, and read-failure regression tests.
 - tests/critic_harness.test.mjs: WASM ABI and host-fallback smoke harness.
-- tests/differential/probe.cpp: per-instruction state trace against pinned Silica-Allah, including MADD/MSUB and 32-/64-bit ADD shifted-register LSL/LSR/ASR.
+- tests/differential/probe.cpp: per-instruction state trace against pinned Silica-Allah, including 32-/64-bit MADD/MSUB and 32-/64-bit ADD shifted-register LSL/LSR/ASR.
 - docs/WEBGPU_BACKEND.md: GPU arithmetic and parity contract.
 - docs/BRUTE_GENIUS_CROSS_PROJECT.md: CPU/Sogitech experiment and verification plan.
 - docs/BUGFIX_AUDIT_2026-11-24.md: current focused source audit and verification boundaries.
