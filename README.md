@@ -19,7 +19,7 @@ Neuro-Silica is an early AArch64 execution and MEMT1 fixed-point research protot
 Requires a native C++20 compiler, Node.js, and Clang/LLVM wasm32 tools for WASM.
 Run: make test
 
-Targeted native MADD/MSUB regression tests were compiled and passed with GCC 14 and Clang 17 in an isolated shell workspace. The full `make test` path (native, WASM, and Node harnesses) still requires CI or a local run; no complete-suite pass is claimed yet.
+Targeted native MADD/MSUB regression tests were compiled and passed with GCC 14 and Clang 17 in an isolated shell workspace. The full `make test` path passed in GitHub Actions run #6 with both GCC and Clang native builds, Clang/wasm-ld WASM builds, the Node fixed-point tests, and the WASM ABI/host-fallback harness.
 
 ## Limitations
 The decoder supports only a small instruction subset; unsupported instructions fault. It is not a general AArch64 emulator. The harness manually invokes the host fallback after SVC yield; it does not prove guest assembly computes MEMT1. No WGSL shader, WebGPU dispatch, staging/readback implementation, guest binary, GUI, or differential GPU test is included.
