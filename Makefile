@@ -9,37 +9,50 @@ WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib
 WASM_LDFLAGS ?= --no-entry --export-memory --export=init_cpu --export=step --export=set_reg --export=get_reg --export=get_fault --export=memory_base --export=get_yielded --export=clear_yielded --export=reset_cpu --allow-undefined --initial-memory=33554432 --max-memory=33554432
 SILICA_ALLAH_DIR ?= ../Silica-Allah
 .PHONY: all native wasm test differential clean
+
 all: native wasm
+
 build:
 	mkdir -p build
+
 build/native_core_test: tests/native_core_test.cpp src/silica/cpu.cpp src/silica/cpu.hpp | build
 	$(CXX) $(NATIVE_FLAGS) tests/native_core_test.cpp src/silica/cpu.cpp -o $@
+	chmod +x $@
+
 build/cpu.o: src/silica/cpu.cpp src/silica/cpu.hpp | build
 	$(WASM_CXX) $(WASM_FLAGS) -c $< -o $@
+
 build/silica_wasm.o: src/silica_wasm.cpp src/silica/cpu.hpp | build
 	$(WASM_CXX) $(WASM_FLAGS) -c $< -o $@
+
 build/silica-core.wasm: build/cpu.o build/silica_wasm.o
 	$(WASM_LD) $(WASM_LDFLAGS) $^ -o $@
+
 native: build/native_core_test
 
 build/differential_probe_reference: tests/differential/probe.cpp $(wildcard $(SILICA_ALLAH_DIR)/include/silica/*.hpp) | build
 	@test -f "$(SILICA_ALLAH_DIR)/include/silica/cpu.hpp" || { echo "Silica-Allah headers not found; set SILICA_ALLAH_DIR to its checkout" >&2; exit 2; }
 	mkdir -p build/differential
 	$(CXX) -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -DSILICA_REFERENCE -I$(SILICA_ALLAH_DIR)/include tests/differential/probe.cpp -o $@
+	chmod +x $@
 
 build/differential_probe_neuro: tests/differential/probe.cpp src/silica/cpu.cpp src/silica/cpu.hpp | build
 	mkdir -p build/differential
 	$(CXX) $(NATIVE_FLAGS) -DSILICA_NEURO tests/differential/probe.cpp src/silica/cpu.cpp -o $@
+	chmod +x $@
 
 differential: build/differential_probe_reference build/differential_probe_neuro
 	./build/differential_probe_reference > build/differential/reference.trace
 	./build/differential_probe_neuro > build/differential/neuro.trace
 	diff -u build/differential/reference.trace build/differential/neuro.trace
 	@echo "Differential state traces match for the declared common subset."
+
 wasm: build/silica-core.wasm
+
 test: native wasm
 	./build/native_core_test
 	node tests/memt1_fallback.test.js
 	node tests/critic_harness.test.mjs
+
 clean:
 	rm -rf build
