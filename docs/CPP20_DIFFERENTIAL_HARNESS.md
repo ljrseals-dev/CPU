@@ -34,18 +34,17 @@ A successful `diff` means only that the two executables emitted identical traces
 
 ## Initial common-subset program
 
-The ten probe steps cover:
+The ten-word program executes nine steps; the taken conditional branch skips the decoy word. The executed steps cover:
 
 1. `MOVZ X0, #10`
 2. `MOVZ X1, #5`
 3. `ADD X0, X0, X1` (unshifted register form)
 4. `SUBS XZR, X0, #15` (NZCV update)
 5. `B.EQ +8` (taken conditional branch)
-6. The branch skips a decoy `MOVZ X2, #99`
-7. `MOVZ X2, #7`
-8. `STR X2, [X3]`
-9. `LDR X4, [X3]`
-10. `ADD X5, X2, X4`
+6. `MOVZ X2, #7` (the decoy `MOVZ X2, #99` is not executed)
+7. `STR X2, [X3]`
+8. `LDR X4, [X3]`
+9. `ADD X5, X2, X4`
 
 The test seeds X3 with address `0x8000`, uses code base `0x1000`, and starts with a known 64-bit data word. The probe compares the selected memory word after every step.
 
