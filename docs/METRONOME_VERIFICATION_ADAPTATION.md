@@ -44,7 +44,7 @@ Xd = Xn * Xm + Xa;
 
 with register 31 read as zero, matching the existing downstream register helper. MSUB remains unsupported and must not be inferred from this change.
 
-Regression tests cover both a nonzero accumulator and XZR accumulator. A deterministic mutation script deliberately corrupts the decode constant and expects the native regression suite to fail.
+Regression tests cover both a nonzero accumulator and XZR accumulator. A deterministic mutation script deliberately corrupts the decode constant and expects the focused MADD regression to fail.
 
 ## Commands
 
