@@ -25,6 +25,49 @@ static void branch_test() {
   assert(cpu.regs.pc == 0x1014);
 }
 
+
+static bool expected_condition(unsigned condition, unsigned nzcv) {
+  const bool n = (nzcv & 8u) != 0;
+  const bool z = (nzcv & 4u) != 0;
+  const bool c = (nzcv & 2u) != 0;
+  const bool v = (nzcv & 1u) != 0;
+  switch (condition) {
+    case 0: return z;
+    case 1: return !z;
+    case 2: return c;
+    case 3: return !c;
+    case 4: return n;
+    case 5: return !n;
+    case 6: return v;
+    case 7: return !v;
+    case 8: return c && !z;
+    case 9: return !c || z;
+    case 10: return n == v;
+    case 11: return n != v;
+    case 12: return !z && (n == v);
+    case 13: return z || (n != v);
+    case 14: return true;
+    default: return false;
+  }
+}
+
+static void all_branch_conditions_test() {
+  static Cpu cpu;
+  for (unsigned condition = 0; condition < 15; ++condition) {
+    for (unsigned flags = 0; flags < 16; ++flags) {
+      cpu.reset();
+      cpu.regs.nzcv = flags;
+      cpu.mem.store32(0x1000, 0x54000040u | condition);  // B.cond +8
+      cpu.regs.pc = 0x1000;
+      cpu.run(1);
+      const uint64_t expected_pc =
+          expected_condition(condition, flags) ? 0x1008u : 0x1004u;
+      assert(cpu.regs.pc == expected_pc);
+      assert(cpu.mem.fault() == FaultReason::None);
+    }
+  }
+}
+
 static void bl_and_ret_register_test() {
   static Cpu cpu;
   cpu.reset();
@@ -118,6 +161,7 @@ static void multiply_accumulate_test() {
 
 int main() {
   branch_test();
+  all_branch_conditions_test();
   bl_and_ret_register_test();
   subs_uses_sp_for_rn31_test();
   bounds_and_alignment_test();
