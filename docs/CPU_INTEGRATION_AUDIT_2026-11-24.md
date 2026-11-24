@@ -31,6 +31,14 @@ Source inspection of current `main` shows:
 
 These are source-inspection findings, not runtime test results.
 
+## Integration progress
+
+- **AUTHORED:** consolidated `src/silica/cpu.cpp` with the fault-PC rollback baseline, checked address arithmetic, BL/RET Xn, SUBS SP-source semantics, shifted ADD (W/X), and W/X MADD/MSUB.
+- **AUTHORED:** added W-register MADD/MSUB native regression tests using operands with nonzero upper halves.
+- **NOT YET CONSOLIDATED:** MEMT1 fallback safe-snapshot/input validation changes, W-form instructions in the differential probe, and full CI workflow review.
+- **NOT BUILD-VERIFIED:** no local compiler/test run has occurred.
+
+
 ## Integration plan
 
 1. Keep this branch based on current `main`; do not rewrite or force-push existing PR branches.
@@ -52,3 +60,7 @@ These are source-inspection findings, not runtime test results.
 ## Verification status
 
 **No build, native test, Node test, WASM build, mutation run, or differential run was performed in this audit step.** GitHub source/patch inspection only. Existing CI pass statements in PR descriptions are historical claims and were not independently re-run here.
+
+## Consolidation status update
+
+The integration branch now contains authored CPU decoder changes and native tests. It is intentionally not yet a complete consolidation of PR #10–#13: MEMT1 fallback source/tests and the differential probe remain outstanding. The source-level integration is committed, but must be reviewed and built before opening a merge-ready PR.
