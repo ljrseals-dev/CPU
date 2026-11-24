@@ -293,17 +293,24 @@ bool Cpu::execute_one() {
     return true;
   }
 
-  // A64 64-bit MADD/MSUB; bit 15 selects subtraction and Ra is an operand.
-  const uint32_t multiply_opcode = ins & 0xFFE08000u;
-  if (multiply_opcode == 0x9B000000u ||
-      multiply_opcode == 0x9B008000u) {
+  // A64 32-bit and 64-bit MADD/MSUB; bit 15 selects subtraction.
+  const uint32_t multiply_opcode = ins & 0x7FE08000u;
+  if (multiply_opcode == 0x1B000000u ||
+      multiply_opcode == 0x1B008000u) {
+    const bool is_64 = (ins >> 31) != 0;
     const unsigned rd = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;
     const unsigned ra = (ins >> 10) & 31u;
     const unsigned rm = (ins >> 16) & 31u;
-    const uint64_t product = rr(rn) * rr(rm);
-    wr(rd, multiply_opcode == 0x9B000000u ? rr(ra) + product
-                                          : rr(ra) - product);
+    const uint64_t lhs = is_64 ? rr(rn) : static_cast<uint32_t>(rr(rn));
+    const uint64_t rhs = is_64 ? rr(rm) : static_cast<uint32_t>(rr(rm));
+    const uint64_t accumulator =
+        is_64 ? rr(ra) : static_cast<uint32_t>(rr(ra));
+    const uint64_t product = lhs * rhs;
+    const uint64_t result = multiply_opcode == 0x1B008000u
+                                ? accumulator - product
+                                : accumulator + product;
+    wr(rd, is_64 ? result : static_cast<uint32_t>(result));
     return true;
   }
 
