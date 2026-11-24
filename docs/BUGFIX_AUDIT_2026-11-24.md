@@ -64,4 +64,4 @@
 - Preserve the prototype's SVC #0 host-yield contract: a successful yield leaves PC at the following instruction so the host callback can resume there.
 - Add native tests for unsupported opcode, out-of-bounds load, unaligned load, and the SVC yield continuation PC.
 
-**Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. Earlier passing runs do not cover this change.
+**Verification:** GitHub Actions run #18 passed the GCC and Clang native/WASM/Node matrix, sanitizer suites, and pinned-reference differential trace for this branch. This verifies the added fault-PC tests and the exact differential sequence, not general AArch64 exception equivalence.
