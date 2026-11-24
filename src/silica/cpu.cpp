@@ -3,32 +3,271 @@
  * Copyright (c) 2026 Lewis James Seals Jr. | SPDX-License-Identifier: MIT
  */
 #include "silica/cpu.hpp"
+
 namespace silica {
-static bool range_ok(uint64_t a,size_t n){return a<=Memory::SIZE&&n<=Memory::SIZE-static_cast<size_t>(a);}
-uint64_t Memory::load64(uint64_t a){if(a&7u){raise_fault(FaultReason::UnalignedAccess);return 0;}if(!range_ok(a,8)){raise_fault(FaultReason::Memory);return 0;}uint64_t v=0;for(unsigned i=0;i<8;i++)v|=uint64_t(data_[static_cast<size_t>(a)+i])<<(i*8);return v;}
-void Memory::store64(uint64_t a,uint64_t v){if(a&7u){raise_fault(FaultReason::UnalignedAccess);return;}if(!range_ok(a,8)){raise_fault(FaultReason::Memory);return;}for(unsigned i=0;i<8;i++)data_[static_cast<size_t>(a)+i]=static_cast<uint8_t>(v>>(i*8));}
-uint32_t Memory::load32(uint64_t a){if(a&3u){raise_fault(FaultReason::UnalignedAccess);return 0;}if(!range_ok(a,4)){raise_fault(FaultReason::Memory);return 0;}uint32_t v=0;for(unsigned i=0;i<4;i++)v|=uint32_t(data_[static_cast<size_t>(a)+i])<<(i*8);return v;}
-void Memory::store32(uint64_t a,uint32_t v){if(a&3u){raise_fault(FaultReason::UnalignedAccess);return;}if(!range_ok(a,4)){raise_fault(FaultReason::Memory);return;}for(unsigned i=0;i<4;i++)data_[static_cast<size_t>(a)+i]=static_cast<uint8_t>(v>>(i*8));}
-void Memory::wipe(){for(size_t i=0;i<SIZE;i++)data_[i]=0;fault_=FaultReason::None;}
-void Cpu::reset(){regs=Registers{};mem.wipe();yielded=false;}
-bool Cpu::execute_one(){
- if(mem.fault()!=FaultReason::None||yielded)return false;const uint64_t pc0=regs.pc;const uint32_t ins=mem.load32(pc0);if(mem.fault()!=FaultReason::None)return false;regs.pc=pc0+4;
- auto rr=[&](unsigned r)->uint64_t{return r==31?0:regs.x[r];};auto wr=[&](unsigned r,uint64_t v){if(r!=31)regs.x[r]=v;};auto base=[&](unsigned r)->uint64_t{return r==31?regs.sp:regs.x[r];};
- if(ins==0xD4000001u){if(rr(8)==0xFFu){yielded=true;return false;}return true;}
- if(ins==0xD65F03C0u){regs.pc=rr(30);return true;}
- if((ins&0xFF800000u)==0xD2800000u){unsigned rd=ins&31u,sh=((ins>>21)&3u)*16u;uint64_t imm=(ins>>5)&0xffffu;wr(rd,imm<<sh);return true;}
- if((ins&0xFF800000u)==0xF1000000u){unsigned rn=(ins>>5)&31u;uint64_t b=((ins>>10)&0xfffu)<<(((ins>>22)&1u)*12u),a=rr(rn),res=a-b;bool n=res>>63,z=res==0,c=a>=b,v=(((a^b)&(a^res))>>63)!=0;regs.nzcv=(n?8u:0u)|(z?4u:0u)|(c?2u:0u)|(v?1u:0u);return true;}
- if((ins&0xFF000010u)==0x54000000u){unsigned c=ins&15u;int32_t off=static_cast<int32_t>(ins<<8)>>13;bool n=regs.nzcv&8u,z=regs.nzcv&4u,cy=regs.nzcv&2u,v=regs.nzcv&1u,t=false;
- switch(c){case 0:t=z;break;case 1:t=!z;break;case 2:t=cy;break;case 3:t=!cy;break;case 4:t=n;break;case 5:t=!n;break;case 6:t=v;break;case 7:t=!v;break;case 8:t=cy&&!z;break;case 9:t=!cy||z;break;case 10:t=n==v;break;case 11:t=n!=v;break;case 12:t=!z&&(n==v);break;case 13:t=z||(n!=v);break;case 14:t=true;break;default:break;}if(t)regs.pc=pc0+static_cast<int64_t>(off)*4;return true;}
- if((ins&0x7C000000u)==0x14000000u){int32_t off=static_cast<int32_t>(ins<<6)>>6;regs.pc=pc0+static_cast<int64_t>(off)*4;return true;}
- if((ins&0xFFC00000u)==0xF9400000u||(ins&0xFFC00000u)==0xF9000000u){unsigned rt=ins&31u,rn=(ins>>5)&31u;uint64_t a=base(rn)+(((ins>>10)&0xfffu)*8u);if((ins&0xFFC00000u)==0xF9400000u){uint64_t x=mem.load64(a);if(mem.fault()!=FaultReason::None)return false;wr(rt,x);}else{mem.store64(a,rr(rt));if(mem.fault()!=FaultReason::None)return false;}return true;}
- if((ins&0xFFE0FC00u)==0xF8607800u||(ins&0xFFE0FC00u)==0xF8207800u){unsigned rt=ins&31u,rn=(ins>>5)&31u,rm=(ins>>16)&31u;uint64_t a=base(rn)+(rr(rm)<<3);if((ins&0xFFE0FC00u)==0xF8607800u){uint64_t x=mem.load64(a);if(mem.fault()!=FaultReason::None)return false;wr(rt,x);}else{mem.store64(a,rr(rt));if(mem.fault()!=FaultReason::None)return false;}return true;}
- if((ins&0xFFE0FC00u)==0x8B000000u){unsigned rd=ins&31u,rn=(ins>>5)&31u,rm=(ins>>16)&31u;wr(rd,rr(rn)+rr(rm));return true;}
- // A64 MADD/MSUB: bits [31:21] select the integer multiply-accumulate
- // family; bit 15 selects subtract. Ra is a real operand, not a fixed ZR.
- const uint32_t multiply_opcode=ins&0xFFE08000u;
- if(multiply_opcode==0x9B000000u||multiply_opcode==0x9B008000u){unsigned rd=ins&31u,rn=(ins>>5)&31u,ra=(ins>>10)&31u,rm=(ins>>16)&31u;const uint64_t product=rr(rn)*rr(rm);wr(rd,multiply_opcode==0x9B000000u?rr(ra)+product:rr(ra)-product);return true;}
- mem.raise_fault(FaultReason::UnsupportedOpcode);return false;
+namespace {
+bool range_ok(uint64_t address, size_t bytes) {
+  return address <= Memory::SIZE &&
+         bytes <= Memory::SIZE - static_cast<size_t>(address);
 }
-void Cpu::run(int n){for(int i=0;i<n;i++)if(!execute_one())break;}
+
+bool add_address(uint64_t base, uint64_t offset, uint64_t& result) {
+  if (offset > UINT64_MAX - base) return false;
+  result = base + offset;
+  return true;
 }
+}  // namespace
+
+uint64_t Memory::load64(uint64_t address) {
+  if (address & 7u) {
+    raise_fault(FaultReason::UnalignedAccess);
+    return 0;
+  }
+  if (!range_ok(address, 8)) {
+    raise_fault(FaultReason::Memory);
+    return 0;
+  }
+  uint64_t value = 0;
+  for (unsigned i = 0; i < 8; ++i) {
+    value |= uint64_t(data_[static_cast<size_t>(address) + i]) << (i * 8);
+  }
+  return value;
+}
+
+void Memory::store64(uint64_t address, uint64_t value) {
+  if (address & 7u) {
+    raise_fault(FaultReason::UnalignedAccess);
+    return;
+  }
+  if (!range_ok(address, 8)) {
+    raise_fault(FaultReason::Memory);
+    return;
+  }
+  for (unsigned i = 0; i < 8; ++i) {
+    data_[static_cast<size_t>(address) + i] =
+        static_cast<uint8_t>(value >> (i * 8));
+  }
+}
+
+uint32_t Memory::load32(uint64_t address) {
+  if (address & 3u) {
+    raise_fault(FaultReason::UnalignedAccess);
+    return 0;
+  }
+  if (!range_ok(address, 4)) {
+    raise_fault(FaultReason::Memory);
+    return 0;
+  }
+  uint32_t value = 0;
+  for (unsigned i = 0; i < 4; ++i) {
+    value |= uint32_t(data_[static_cast<size_t>(address) + i]) << (i * 8);
+  }
+  return value;
+}
+
+void Memory::store32(uint64_t address, uint32_t value) {
+  if (address & 3u) {
+    raise_fault(FaultReason::UnalignedAccess);
+    return;
+  }
+  if (!range_ok(address, 4)) {
+    raise_fault(FaultReason::Memory);
+    return;
+  }
+  for (unsigned i = 0; i < 4; ++i) {
+    data_[static_cast<size_t>(address) + i] =
+        static_cast<uint8_t>(value >> (i * 8));
+  }
+}
+
+void Memory::wipe() {
+  for (size_t i = 0; i < SIZE; ++i) data_[i] = 0;
+  fault_ = FaultReason::None;
+}
+
+void Cpu::reset() {
+  regs = Registers{};
+  mem.wipe();
+  yielded = false;
+}
+
+bool Cpu::execute_one() {
+  if (mem.fault() != FaultReason::None || yielded) return false;
+
+  const uint64_t pc0 = regs.pc;
+  const uint32_t ins = mem.load32(pc0);
+  if (mem.fault() != FaultReason::None) return false;
+  regs.pc = pc0 + 4;
+
+  const auto rr = [this](unsigned r) -> uint64_t {
+    return r == 31 ? 0 : regs.x[r];
+  };
+  const auto wr = [this](unsigned r, uint64_t value) {
+    if (r != 31) regs.x[r] = value;
+  };
+  const auto base = [this](unsigned r) -> uint64_t {
+    return r == 31 ? regs.sp : regs.x[r];
+  };
+
+  // SVC #0 is the prototype's host-yield trap when X8 carries 0xFF.
+  if (ins == 0xD4000001u) {
+    if (rr(8) == 0xFFu) {
+      yielded = true;
+      return false;
+    }
+    return true;
+  }
+
+  // RET Xn (including the conventional RET X30).
+  if ((ins & 0xFFFFFC1Fu) == 0xD65F0000u) {
+    const unsigned rn = (ins >> 5) & 31u;
+    regs.pc = rr(rn);
+    return true;
+  }
+
+  // MOVZ Xd, #imm{, LSL #shift}.
+  if ((ins & 0xFF800000u) == 0xD2800000u) {
+    const unsigned rd = ins & 31u;
+    const unsigned shift = ((ins >> 21) & 3u) * 16u;
+    const uint64_t immediate = (ins >> 5) & 0xFFFFu;
+    wr(rd, immediate << shift);
+    return true;
+  }
+
+  // SUBS Xd, Xn|SP, #imm{, LSL #12}; Rd=31 discards into XZR.
+  if ((ins & 0xFF800000u) == 0xF1000000u) {
+    const unsigned rn = (ins >> 5) & 31u;
+    const uint64_t immediate =
+        uint64_t((ins >> 10) & 0xFFFu) << (((ins >> 22) & 1u) * 12u);
+    const uint64_t a = base(rn);  // Rn=31 denotes SP for this encoding.
+    const uint64_t result = a - immediate;
+    const bool n = (result >> 63) != 0;
+    const bool z = result == 0;
+    const bool c = a >= immediate;
+    const bool v = (((a ^ immediate) & (a ^ result)) >> 63) != 0;
+    regs.nzcv = (n ? 8u : 0u) | (z ? 4u : 0u) |
+                (c ? 2u : 0u) | (v ? 1u : 0u);
+    return true;
+  }
+
+  // B.cond.
+  if ((ins & 0xFF000010u) == 0x54000000u) {
+    const unsigned condition = ins & 15u;
+    const int32_t offset = static_cast<int32_t>(ins << 8) >> 13;
+    const bool n = (regs.nzcv & 8u) != 0;
+    const bool z = (regs.nzcv & 4u) != 0;
+    const bool c = (regs.nzcv & 2u) != 0;
+    const bool v = (regs.nzcv & 1u) != 0;
+    bool take = false;
+    switch (condition) {
+      case 0: take = z; break;                 // EQ
+      case 1: take = !z; break;                // NE
+      case 2: take = c; break;                 // CS/HS
+      case 3: take = !c; break;                // CC/LO
+      case 4: take = n; break;                 // MI
+      case 5: take = !n; break;                // PL
+      case 6: take = v; break;                 // VS
+      case 7: take = !v; break;                // VC
+      case 8: take = c && !z; break;           // HI
+      case 9: take = !c || z; break;           // LS
+      case 10: take = n == v; break;           // GE
+      case 11: take = n != v; break;           // LT
+      case 12: take = !z && (n == v); break;   // GT
+      case 13: take = z || (n != v); break;    // LE
+      case 14: take = true; break;             // AL
+      default: break;                          // NV/reserved in this subset
+    }
+    if (take) regs.pc = pc0 + static_cast<int64_t>(offset) * 4;
+    return true;
+  }
+
+  // B and BL share the imm26 layout; BL additionally writes X30.
+  if ((ins & 0x7C000000u) == 0x14000000u) {
+    const int32_t offset = static_cast<int32_t>(ins << 6) >> 6;
+    if ((ins & 0x80000000u) != 0) regs.x[30] = pc0 + 4;
+    regs.pc = pc0 + static_cast<int64_t>(offset) * 4;
+    return true;
+  }
+
+  // LDR/STR X, [Xn|SP, #imm12 * 8].
+  if ((ins & 0xFFC00000u) == 0xF9400000u ||
+      (ins & 0xFFC00000u) == 0xF9000000u) {
+    const unsigned rt = ins & 31u;
+    const unsigned rn = (ins >> 5) & 31u;
+    const uint64_t offset = uint64_t((ins >> 10) & 0xFFFu) * 8u;
+    uint64_t address = 0;
+    if (!add_address(base(rn), offset, address)) {
+      mem.raise_fault(FaultReason::Memory);
+      return false;
+    }
+    if ((ins & 0xFFC00000u) == 0xF9400000u) {
+      const uint64_t value = mem.load64(address);
+      if (mem.fault() != FaultReason::None) return false;
+      wr(rt, value);
+    } else {
+      mem.store64(address, rr(rt));
+      if (mem.fault() != FaultReason::None) return false;
+    }
+    return true;
+  }
+
+  // LDR/STR X, [Xn|SP, Xm, LSL #3].
+  if ((ins & 0xFFE0FC00u) == 0xF8607800u ||
+      (ins & 0xFFE0FC00u) == 0xF8207800u) {
+    const unsigned rt = ins & 31u;
+    const unsigned rn = (ins >> 5) & 31u;
+    const unsigned rm = (ins >> 16) & 31u;
+    const uint64_t index = rr(rm);
+    if (index > (UINT64_MAX >> 3)) {
+      mem.raise_fault(FaultReason::Memory);
+      return false;
+    }
+    uint64_t address = 0;
+    if (!add_address(base(rn), index << 3, address)) {
+      mem.raise_fault(FaultReason::Memory);
+      return false;
+    }
+    if ((ins & 0xFFE0FC00u) == 0xF8607800u) {
+      const uint64_t value = mem.load64(address);
+      if (mem.fault() != FaultReason::None) return false;
+      wr(rt, value);
+    } else {
+      mem.store64(address, rr(rt));
+      if (mem.fault() != FaultReason::None) return false;
+    }
+    return true;
+  }
+
+  // ADD Xd, Xn, Xm (unshifted register form).
+  if ((ins & 0xFFE0FC00u) == 0x8B000000u) {
+    const unsigned rd = ins & 31u;
+    const unsigned rn = (ins >> 5) & 31u;
+    const unsigned rm = (ins >> 16) & 31u;
+    wr(rd, rr(rn) + rr(rm));
+    return true;
+  }
+
+  // A64 64-bit MADD/MSUB; bit 15 selects subtraction and Ra is an operand.
+  const uint32_t multiply_opcode = ins & 0xFFE08000u;
+  if (multiply_opcode == 0x9B000000u ||
+      multiply_opcode == 0x9B008000u) {
+    const unsigned rd = ins & 31u;
+    const unsigned rn = (ins >> 5) & 31u;
+    const unsigned ra = (ins >> 10) & 31u;
+    const unsigned rm = (ins >> 16) & 31u;
+    const uint64_t product = rr(rn) * rr(rm);
+    wr(rd, multiply_opcode == 0x9B000000u ? rr(ra) + product
+                                          : rr(ra) - product);
+    return true;
+  }
+
+  mem.raise_fault(FaultReason::UnsupportedOpcode);
+  return false;
+}
+
+void Cpu::run(int instruction_count) {
+  for (int i = 0; i < instruction_count; ++i) {
+    if (!execute_one()) break;
+  }
+}
+}  // namespace silica
