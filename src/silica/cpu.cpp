@@ -3,14 +3,13 @@
  * Copyright (c) 2026 Lewis James Seals Jr. | SPDX-License-Identifier: MIT
  */
 #include "silica/cpu.hpp"
-#include <string.h>
 namespace silica {
 static bool range_ok(uint64_t a,size_t n){return a<=Memory::SIZE&&n<=Memory::SIZE-static_cast<size_t>(a);}
-uint64_t Memory::load64(uint64_t a){if(a&7u){raise_fault(FaultReason::UnalignedAccess);return 0;}if(!range_ok(a,8)){raise_fault(FaultReason::Memory);return 0;}uint64_t v;memcpy(&v,data_+static_cast<size_t>(a),8);return v;}
-void Memory::store64(uint64_t a,uint64_t v){if(a&7u){raise_fault(FaultReason::UnalignedAccess);return;}if(!range_ok(a,8)){raise_fault(FaultReason::Memory);return;}memcpy(data_+static_cast<size_t>(a),&v,8);}
-uint32_t Memory::load32(uint64_t a){if(a&3u){raise_fault(FaultReason::UnalignedAccess);return 0;}if(!range_ok(a,4)){raise_fault(FaultReason::Memory);return 0;}uint32_t v;memcpy(&v,data_+static_cast<size_t>(a),4);return v;}
-void Memory::store32(uint64_t a,uint32_t v){if(a&3u){raise_fault(FaultReason::UnalignedAccess);return;}if(!range_ok(a,4)){raise_fault(FaultReason::Memory);return;}memcpy(data_+static_cast<size_t>(a),&v,4);}
-void Memory::wipe(){memset(data_,0,sizeof(data_));fault_=FaultReason::None;}
+uint64_t Memory::load64(uint64_t a){if(a&7u){raise_fault(FaultReason::UnalignedAccess);return 0;}if(!range_ok(a,8)){raise_fault(FaultReason::Memory);return 0;}uint64_t v=0;for(unsigned i=0;i<8;i++)v|=uint64_t(data_[static_cast<size_t>(a)+i])<<(i*8);return v;}
+void Memory::store64(uint64_t a,uint64_t v){if(a&7u){raise_fault(FaultReason::UnalignedAccess);return;}if(!range_ok(a,8)){raise_fault(FaultReason::Memory);return;}for(unsigned i=0;i<8;i++)data_[static_cast<size_t>(a)+i]=static_cast<uint8_t>(v>>(i*8));}
+uint32_t Memory::load32(uint64_t a){if(a&3u){raise_fault(FaultReason::UnalignedAccess);return 0;}if(!range_ok(a,4)){raise_fault(FaultReason::Memory);return 0;}uint32_t v=0;for(unsigned i=0;i<4;i++)v|=uint32_t(data_[static_cast<size_t>(a)+i])<<(i*8);return v;}
+void Memory::store32(uint64_t a,uint32_t v){if(a&3u){raise_fault(FaultReason::UnalignedAccess);return;}if(!range_ok(a,4)){raise_fault(FaultReason::Memory);return;}for(unsigned i=0;i<4;i++)data_[static_cast<size_t>(a)+i]=static_cast<uint8_t>(v>>(i*8));}
+void Memory::wipe(){for(size_t i=0;i<SIZE;i++)data_[i]=0;fault_=FaultReason::None;}
 void Cpu::reset(){regs=Registers{};mem.wipe();yielded=false;}
 bool Cpu::execute_one(){
  if(mem.fault()!=FaultReason::None||yielded)return false;const uint64_t pc0=regs.pc;const uint32_t ins=mem.load32(pc0);if(mem.fault()!=FaultReason::None)return false;regs.pc=pc0+4;
