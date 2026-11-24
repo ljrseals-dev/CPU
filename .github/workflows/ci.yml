@@ -50,8 +50,8 @@ jobs:
         with:
           repository: ljrseals-dev/Silica-Allah
           ref: 92b4e6751111a03b83080d773ed3b1b34a208d01
-          path: Silicia-Allah
+          path: Silica-Allah
       - name: Run per-instruction differential state trace
         run: |
           make clean
-          make differential CXX=clang++ SILICA_ALLAH_DIR=Silicia-Allah
+          make differential CXX=clang++ SILICA_ALLAH_DIR=Silica-Allah
