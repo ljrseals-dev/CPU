@@ -201,6 +201,43 @@ static void multiply_accumulate_test() {
   assert(cpu.regs.x[4] == (uint64_t(7) - uint64_t(30)));
 }
 
+
+static void fault_pc_rollback_test() {
+  static Cpu cpu;
+
+  cpu.reset();
+  cpu.mem.store32(0x1000, 0xFFFFFFFFu);  // unsupported instruction
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::UnsupportedOpcode);
+  assert(cpu.regs.pc == 0x1000);
+
+  cpu.reset();
+  cpu.regs.x[1] = Memory::SIZE;
+  cpu.mem.store32(0x1000, 0xF9400020u);  // LDR X0, [X1] -> bounds fault
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::Memory);
+  assert(cpu.regs.pc == 0x1000);
+
+  cpu.reset();
+  cpu.regs.x[1] = 3;
+  cpu.mem.store32(0x1000, 0xF9400020u);  // LDR X0, [X1] -> alignment fault
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::UnalignedAccess);
+  assert(cpu.regs.pc == 0x1000);
+
+  cpu.reset();
+  cpu.regs.x[8] = 0xFF;
+  cpu.mem.store32(0x1000, 0xD4000001u);  // prototype SVC #0 host-yield
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.yielded);
+  assert(cpu.mem.fault() == FaultReason::None);
+  assert(cpu.regs.pc == 0x1004);  // yield resumes after the SVC instruction
+}
+
 int main() {
   branch_test();
   all_branch_conditions_test();
@@ -212,5 +249,6 @@ int main() {
   little_endian_test();
   multiply_accumulate_test();
   add_shifted_register_test();
+  fault_pc_rollback_test();
   std::cout << "native core regression tests passed\n";
 }
