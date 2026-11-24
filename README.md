@@ -1,35 +1,23 @@
 # CPU / Neuro-Silica
 
-This repository is being brought from an empty scaffold toward the v3.1 CPU +
-WebGPU research prototype. It is **not production-ready** and does not yet
-claim a verified AArch64 implementation or CPU/GPU equivalence.
+**Developer / Author:** Lewis James Seals Jr. (ljrseals-dev)  
+**License:** MIT
 
-## Current implementation slice
+Neuro-Silica is an early AArch64 execution and MEMT1 fixed-point research prototype. It is not production-ready, does not implement complete AArch64, and makes no CPU/GPU-equivalence claim.
 
-- `host/memt1_fallback.js` defines the shared MEMT1 fixed-point CPU fallback.
-- Arithmetic is unsigned modulo 2^64, with the shift and addition order made
-  explicit.
-- `tests/memt1_fallback.test.js` exercises the shared implementation with
-  Node's built-in test runner.
+## Authored implementation
+- host/memt1_fallback.mjs: checked JavaScript BigInt fallback.
+- src/silica/cpu.hpp and cpu.cpp: bounded memory and a deliberately limited decoder.
+- src/silica_wasm.cpp: minimal C ABI wrapper using static storage, without a custom allocator.
+- tests/native_core_test.cpp: native branch, bounds, and alignment smoke tests.
+- tests/critic_harness.test.mjs: WASM ABI and host-fallback smoke harness.
+- docs/WEBGPU_BACKEND.md: GPU arithmetic and parity contract.
 
-## Precision and verification status
+## Build
+Requires a native C++20 compiler, Node.js, and Clang/LLVM wasm32 tools for WASM.
+Run: make test
 
-The intended WebGPU design represents each 64-bit value as two 32-bit limbs.
-Portable WGSL has no native `u64`; the shader must implement 32-bit partial
-products and carries without converting values to floating point. No GPU shader
-is included or claimed verified yet. CPU/GPU byte-equivalence has **not** been
-verified for any range.
+The GitHub authoring workflow does not execute these commands. Status remains AUTHORED — NOT TESTED until a real local or CI run records successful output.
 
-## Run the current tests
-
-```sh
-node --test tests/memt1_fallback.test.js
-```
-
-## Remaining v3.1 work
-
-AArch64 decoder and NZCV semantics, explicit fault reasons, RET and halt
-hypercall semantics, checked memory access, WASM ABI, limb-arithmetic WGSL,
-WebGPU staging readback/resource lifetime, guest assembly and reproducible
-binary generation, GUI error handling, differential GPU tests, and CI remain
-to be implemented and verified.
+## Limitations
+The decoder supports only a small instruction subset; unsupported instructions fault. It is not a general AArch64 emulator. The harness manually invokes the host fallback after SVC yield; it does not prove guest assembly computes MEMT1. No WGSL shader, WebGPU dispatch, staging/readback implementation, guest binary, GUI, or differential GPU test is included.
