@@ -5,8 +5,8 @@ CXX ?= clang++
 WASM_CXX ?= clang++
 WASM_LD ?= wasm-ld
 NATIVE_FLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Isrc
-WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib -fno-builtin -Isrc -Wall -Wextra
-WASM_LDFLAGS ?= --no-entry --export-dynamic --allow-undefined --initial-memory=33554432 --max-memory=33554432
+WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib -Isrc -Wall -Wextra
+WASM_LDFLAGS ?= --no-entry --export-dynamic --export-memory --allow-undefined --initial-memory=33554432 --max-memory=33554432
 .PHONY: all native wasm test clean
 all: native wasm
 build:
