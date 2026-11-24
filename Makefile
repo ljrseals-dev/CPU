@@ -23,6 +23,7 @@ build/silica-core.wasm: build/cpu.o build/silica_wasm.o
 native: build/native_core_test
 
 build/differential_probe_reference: tests/differential/probe.cpp $(wildcard $(SILICA_ALLAH_DIR)/include/silica/*.hpp) | build
+	@test -f "$(SILICA_ALLAH_DIR)/include/silica/cpu.hpp" || { echo "Silica-Allah headers not found; set SILICA_ALLAH_DIR to its checkout" >&2; exit 2; }
 	mkdir -p build/differential
 	$(CXX) -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -DSILICA_REFERENCE -I$(SILICA_ALLAH_DIR)/include tests/differential/probe.cpp -o $@
 
