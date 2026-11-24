@@ -2,7 +2,7 @@
 
 **Author:** Lewis James Seals Jr. (ljrseals-dev)  
 **License:** MIT  
-**Status:** Source changes authored; this branch's CI verification pending.
+**Status:** Core, Node, WASM, mutation, and differential CI passed; sanitizer matrix pending.
 
 ## Confirmed defects addressed in this change
 
@@ -14,6 +14,8 @@
 6. **MEMT1 fallback accepted unaligned and unsafe address ranges.** Matrix/key/value regions are checked for 8-byte alignment and safe-integer range before reads or writes.
 7. **MEMT1 fallback could partially mutate the matrix if a later input read failed.** All inputs are now snapshotted and all outputs computed before the first matrix write.
 
+8. **B.cond coverage was too narrow.** Added exhaustive checks of all 15 defined condition codes against all 16 NZCV combinations.
+
 ## Added regression evidence
 
 - BL writes X30 and branches to the encoded target.
@@ -23,6 +25,8 @@
 - MEMT1 fallback rejects unaligned and unsafe address ranges before memory callbacks.
 - MEMT1 fallback performs no writes when an input read fails.
 - A mutation target removes BL's X30 write and requires the native regression suite to kill that mutant.
+- Every defined B.cond predicate is checked over all 16 NZCV states.
+- Added an ASan/UBSan native test target and wired it into the GCC/Clang CI matrix.
 - The pinned-reference differential program now includes SUBS with SP, BL, and RET X30 in its per-instruction state trace. This new extension awaits the pull request's CI result.
 
 ## Verification boundaries
