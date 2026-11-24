@@ -1,0 +1,9 @@
+{
+  "name": "neuro-silica-cpu",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:host": "node --test tests/memt1_fallback.test.js",
+    "test:wasm": "node tests/critic_harness.test.mjs"
+  }
+}
