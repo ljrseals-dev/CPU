@@ -52,7 +52,7 @@ The test seeds X3 with address `0x8000`, uses code base `0x1000`, and starts wit
 ## Deliberate exclusions
 
 - SVC / MEMT1 host-yield behavior: downstream-only convention; upstream does not implement A64 exception entry.
-- MADD/MSUB: excluded until both encodings and downstream dispatch are independently validated.
+- MADD/MSUB: excluded until both encodings and downstream dispatch are independently validated. Source inspection found the current Neuro-Silica MADD predicate compares `(ins & 0xFFE08000u)` with `0x9B007000u`; the mask clears the `0x7000` bits, so that equality cannot succeed. MADD therefore appears to fall through to `UnsupportedOpcode`. This is a static source finding, not a runtime reproduction.
 - Unaligned and out-of-range accesses: memory contracts differ by design.
 - SIMD/FP, system registers, pair accesses, and other instruction families: not in this initial intersection.
 - Halt, Invalid, and fault translation: different engine contracts; no false equivalence is implied.
