@@ -44,6 +44,7 @@ constexpr std::array<uint32_t, 10> kProgram{{
     0xF9400064u,
     0x8B040045u,
 }};
+constexpr std::size_t kExecutedSteps = kProgram.size() - 1;  // B.EQ skips one word.
 
 void emit_u64(uint64_t value) {
   std::cout << std::hex << std::setfill('0') << std::setw(16) << value;
@@ -59,7 +60,7 @@ void run_probe() {
     std::exit(2);
   }
 
-  for (size_t step = 0; step < kProgram.size(); ++step) {
+  for (size_t step = 0; step < kExecutedSteps; ++step) {
     cpu.step();
     if (cpu.halted() || cpu.mem.fault()) {
       std::cerr << "reference halted/faulted at step " << step
