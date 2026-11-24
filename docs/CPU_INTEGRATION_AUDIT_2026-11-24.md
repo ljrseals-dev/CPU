@@ -64,3 +64,20 @@ These are source-inspection findings, not runtime test results.
 ## Consolidation status update
 
 The integration branch now contains authored CPU decoder changes and native tests. It is intentionally not yet a complete consolidation of PR #10–#13: MEMT1 fallback source/tests and the differential probe remain outstanding. The source-level integration is committed, but must be reviewed and built before opening a merge-ready PR.
+
+
+## Further consolidation — MEMT1 and verification harness
+
+- **AUTHORED:** imported PR #10's `host/memt1_fallback.mjs` range validation, 8-byte alignment checks, U64 validation, full input snapshot, output staging, and callback compatibility adapter.
+- **AUTHORED:** imported MEMT1 tests for fixed-point behavior, wraparound, invalid values, alignment/range rejection, and no writes after a read failure.
+- **AUTHORED:** updated the differential probe to include a W-register shifted ADD and W-register MADD/MSUB with high bits set in source X registers, to expose accidental 64-bit operand use.
+- **AUTHORED:** added Makefile sanitizer and mutation targets and configured native CI to run the sanitizer target.
+- **REVIEW NOTE:** MEMT1 stages all reads and calculations before writing, but a write callback that itself fails partway through can still leave partial writes. The API has no transactional write primitive; do not describe it as fully failure-atomic for write failures.
+- **NOT VERIFIED:** no native/WASM build, Node test, sanitizer, mutation, or differential execution has been run by the assistant. A draft PR will be used to let repository CI evaluate the branch.
+
+## Remaining review risks
+
+1. Verify the differential probe against the pinned Silica-Allah revision; do not assume parity from matching source intent.
+2. Review the exact instruction encodings and expected W-register values in the differential trace.
+3. Check the host adapter's old callback argument mapping and ESM import paths in the full project.
+4. Validate the mutation script and ensure the sanitizer target is compatible with both GCC and Clang runners.
