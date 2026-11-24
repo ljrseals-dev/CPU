@@ -1,0 +1,34 @@
+name: Neuro-Silica CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neuro-silica-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-wasm-and-mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Install C++ and WebAssembly toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang lld
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build native and WebAssembly targets
+        run: make test CXX=clang++ WASM_CXX=clang++ WASM_LD=wasm-ld
+      - name: Verify the multiply decoder test kills a deliberate mutant
+        run: make mutation CXX=clang++
