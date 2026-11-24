@@ -32,8 +32,8 @@ constexpr uint64_t kDataBase = 0x8000;
 
 // MOVZ x0,#10; MOVZ x1,#5; ADD x0,x0,x1; SUBS xzr,x0,#15;
 // B.EQ +8 (skip the decoy); MOVZ x2,#99; MOVZ x2,#7;
-// STR x2,[x3]; LDR x4,[x3]; ADD x5,x2,x4.
-constexpr std::array<uint32_t, 10> kProgram{{
+// STR x2,[x3]; LDR x4,[x3]; ADD x5,x2,x4; MADD x7,x1,x2,x4; MSUB x8,x1,x2,x4.
+constexpr std::array<uint32_t, 12> kProgram{{
     0xD2800140u,
     0xD28000A1u,
     0x8B010000u,
@@ -44,6 +44,8 @@ constexpr std::array<uint32_t, 10> kProgram{{
     0xF9000062u,
     0xF9400064u,
     0x8B040045u,
+    0x9B021027u,
+    0x9B029028u,
 }};
 constexpr std::size_t kExecutedSteps = kProgram.size() - 1;  // B.EQ skips one word.
 
