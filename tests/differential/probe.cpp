@@ -30,22 +30,25 @@ namespace {
 constexpr uint64_t kCodeBase = 0x1000;
 constexpr uint64_t kDataBase = 0x8000;
 
-// MOVZ x0,#10; MOVZ x1,#5; ADD x0,x0,x1; SUBS xzr,x0,#15;
-// B.EQ +8 (skip the decoy); MOVZ x2,#99; MOVZ x2,#7;
-// STR x2,[x3]; LDR x4,[x3]; ADD x5,x2,x4; MADD x7,x1,x2,x4; MSUB x8,x1,x2,x4.
-constexpr std::array<uint32_t, 12> kProgram{{
-    0xD2800140u,
-    0xD28000A1u,
-    0x8B010000u,
-    0xF1003C1Fu,
-    0x54000040u,
-    0xD2800C62u,
-    0xD28000E2u,
-    0xF9000062u,
-    0xF9400064u,
-    0x8B040045u,
-    0x9B021027u,
-    0x9B029028u,
+// MOVZ; ADD; SUBS; B.EQ skips one decoy; STR/LDR; ADD; MADD/MSUB;
+// SUBS XZR,SP,#1; BL +8; return through X30; then execute the continuation.
+constexpr std::array<uint32_t, 16> kProgram{{
+    0xD2800140u,  // MOVZ X0, #10
+    0xD28000A1u,  // MOVZ X1, #5
+    0x8B010000u,  // ADD X0, X0, X1
+    0xF1003C1Fu,  // SUBS XZR, X0, #15
+    0x54000040u,  // B.EQ +8
+    0xD2800C62u,  // skipped: MOVZ X2, #99
+    0xD28000E2u,  // MOVZ X2, #7
+    0xF9000062u,  // STR X2, [X3]
+    0xF9400064u,  // LDR X4, [X3]
+    0x8B040045u,  // ADD X5, X2, X4
+    0x9B021027u,  // MADD X7, X1, X2, X4
+    0x9B029028u,  // MSUB X8, X1, X2, X4
+    0xF10007FFu,  // SUBS XZR, SP, #1
+    0x94000002u,  // BL +8; X30 receives address of the next word
+    0xD280054Au,  // continuation: MOVZ X10, #42
+    0xD65F03C0u,  // callee: RET X30
 }};
 constexpr std::size_t kExecutedSteps = kProgram.size() - 1;  // B.EQ skips one word.
 
