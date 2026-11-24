@@ -6,7 +6,7 @@
 #include <iostream>
 
 int main() {
-  silica::Cpu cpu;
+  static silica::Cpu cpu;
   cpu.reset();
   cpu.regs.x[1] = 6;
   cpu.regs.x[2] = 7;
