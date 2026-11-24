@@ -98,6 +98,11 @@ bool Cpu::execute_one() {
   const uint32_t ins = mem.load32(pc0);
   if (mem.fault() != FaultReason::None) return false;
   regs.pc = pc0 + 4;
+  const auto fail = [this, pc0](FaultReason reason) {
+    mem.raise_fault(reason);
+    regs.pc = pc0;
+    return false;
+  };
 
   const auto rr = [this](unsigned r) -> uint64_t {
     return r == 31 ? 0 : regs.x[r];
@@ -197,16 +202,21 @@ bool Cpu::execute_one() {
     const uint64_t offset = uint64_t((ins >> 10) & 0xFFFu) * 8u;
     uint64_t address = 0;
     if (!add_address(base(rn), offset, address)) {
-      mem.raise_fault(FaultReason::Memory);
-      return false;
+      return fail(FaultReason::Memory);
     }
     if ((ins & 0xFFC00000u) == 0xF9400000u) {
       const uint64_t value = mem.load64(address);
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
       wr(rt, value);
     } else {
       mem.store64(address, rr(rt));
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
     }
     return true;
   }
@@ -219,21 +229,25 @@ bool Cpu::execute_one() {
     const unsigned rm = (ins >> 16) & 31u;
     const uint64_t index = rr(rm);
     if (index > (UINT64_MAX >> 3)) {
-      mem.raise_fault(FaultReason::Memory);
-      return false;
+      return fail(FaultReason::Memory);
     }
     uint64_t address = 0;
     if (!add_address(base(rn), index << 3, address)) {
-      mem.raise_fault(FaultReason::Memory);
-      return false;
+      return fail(FaultReason::Memory);
     }
     if ((ins & 0xFFE0FC00u) == 0xF8607800u) {
       const uint64_t value = mem.load64(address);
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
       wr(rt, value);
     } else {
       mem.store64(address, rr(rt));
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
     }
     return true;
   }
@@ -250,8 +264,7 @@ bool Cpu::execute_one() {
     const unsigned amount = (ins >> 10) & 63u;
     const unsigned width = is_64 ? 64u : 32u;
     if (shift == 3u || amount >= width) {
-      mem.raise_fault(FaultReason::UnsupportedOpcode);
-      return false;
+      return fail(FaultReason::UnsupportedOpcode);
     }
 
     uint64_t operand = rr(rm);
@@ -294,8 +307,7 @@ bool Cpu::execute_one() {
     return true;
   }
 
-  mem.raise_fault(FaultReason::UnsupportedOpcode);
-  return false;
+  return fail(FaultReason::UnsupportedOpcode);
 }
 
 void Cpu::run(int instruction_count) {
