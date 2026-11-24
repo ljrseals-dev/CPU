@@ -144,6 +144,48 @@ static void little_endian_test() {
   assert(memory.load32(8) == 0xA1B2C3D4u);
 }
 
+
+static constexpr uint32_t add_shifted(unsigned is_64, unsigned shift,
+                                      unsigned amount, unsigned rm,
+                                      unsigned rn, unsigned rd) {
+  return (is_64 ? 0x8B000000u : 0x0B000000u) |
+         (shift << 22) | (rm << 16) | (amount << 10) |
+         (rn << 5) | rd;
+}
+
+static void add_shifted_register_test() {
+  static Cpu cpu;
+  cpu.reset();
+  cpu.regs.x[1] = 5;
+  cpu.regs.x[2] = 7;
+  cpu.regs.x[3] = 0x8000000000000000ull;
+  cpu.mem.store32(0x1000, add_shifted(1, 0, 3, 2, 1, 0));  // ADD X0,X1,X2,LSL #3
+  cpu.mem.store32(0x1004, add_shifted(1, 1, 1, 2, 1, 4));  // ADD X4,X1,X2,LSR #1
+  cpu.mem.store32(0x1008, add_shifted(1, 2, 1, 3, 1, 5));  // ADD X5,X1,X3,ASR #1
+  cpu.mem.store32(0x100C, add_shifted(0, 0, 2, 2, 1, 6));  // ADD W6,W1,W2,LSL #2
+  cpu.mem.store32(0x1010, add_shifted(0, 1, 1, 2, 1, 7));  // ADD W7,W1,W2,LSR #1
+  cpu.regs.pc = 0x1000;
+  cpu.run(5);
+  assert(cpu.mem.fault() == FaultReason::None);
+  assert(cpu.regs.x[0] == 61u);
+  assert(cpu.regs.x[4] == 8u);
+  assert(cpu.regs.x[5] == 0xC000000000000005ull);
+  assert(cpu.regs.x[6] == 33u);
+  assert(cpu.regs.x[7] == 8u);
+
+  cpu.reset();
+  cpu.mem.store32(0x1000, add_shifted(1, 3, 0, 2, 1, 0));  // reserved ROR shift
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::UnsupportedOpcode);
+
+  cpu.reset();
+  cpu.mem.store32(0x1000, add_shifted(0, 0, 32, 2, 1, 0));  // invalid W shift amount
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::UnsupportedOpcode);
+}
+
 static void multiply_accumulate_test() {
   static Cpu cpu;
   cpu.reset();
@@ -169,5 +211,6 @@ int main() {
   register_offset_wraparound_test();
   little_endian_test();
   multiply_accumulate_test();
+  add_shifted_register_test();
   std::cout << "native core regression tests passed\n";
 }
