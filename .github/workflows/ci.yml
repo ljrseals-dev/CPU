@@ -38,6 +38,7 @@ jobs:
         run: |
           make clean
           make test CXX=${{ matrix.native_cxx }} WASM_CXX=clang++ WASM_LD=wasm-ld
+          make san CXX=${{ matrix.native_cxx }}
 
   differential:
     name: Silica-Allah lockstep trace
