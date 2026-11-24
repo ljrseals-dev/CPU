@@ -78,4 +78,4 @@
 - Add native tests with nonzero upper halves in the source registers to prove W-form inputs ignore those bits.
 - Extend the pinned per-instruction differential trace with W-form MADD and MSUB.
 
-**Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. Prior passing runs do not cover the new W-form multiply instructions.
+**Verification:** GitHub Actions run #20 passed GCC and Clang native/WASM/Node jobs, ASan/UBSan suites, and the pinned Silica-Allah per-instruction trace containing the W-form MADD/MSUB cases. This establishes agreement only for those exact test vectors.
