@@ -11,6 +11,7 @@
  */
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 
@@ -30,7 +31,7 @@ constexpr uint64_t kDataBase = 0x8000;
 
 // MOVZ x0,#10; MOVZ x1,#5; ADD x0,x0,x1; SUBS xzr,x0,#15;
 // B.EQ +8 (skip the decoy); MOVZ x2,#99; MOVZ x2,#7;
-// STR x2,[x3]; LDR x4,[x3]; MUL x5,x2,x4.
+// STR x2,[x3]; LDR x4,[x3]; ADD x5,x2,x4.
 constexpr std::array<uint32_t, 10> kProgram{{
     0xD2800140u,
     0xD28000A1u,
@@ -41,7 +42,7 @@ constexpr std::array<uint32_t, 10> kProgram{{
     0xD28000E2u,
     0xF9000062u,
     0xF9400064u,
-    0x9B047C45u,
+    0x8B040045u,
 }};
 
 void emit_u64(uint64_t value) {
