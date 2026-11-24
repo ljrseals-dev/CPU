@@ -58,8 +58,8 @@ constexpr std::array<uint32_t, 21> kProgram{{
     add_shifted(1, 0, 3, 2, 1, 6),  // ADD X6, X1, X2, LSL #3
     add_shifted(1, 1, 1, 2, 1, 7),  // ADD X7, X1, X2, LSR #1
     add_shifted(1, 2, 1, 9, 1, 8),  // ADD X8, X1, X9, ASR #1
-    0x1B020C8Bu,  // MADD W11, W1, W2, W3
-    0x1B028C8Cu,  // MSUB W12, W1, W2, W3
+    0x1B02102Bu,  // MADD W11, W1, W2, W4
+    0x1B02902Cu,  // MSUB W12, W1, W2, W4
     0xD65F03C0u,  // callee: RET X30
 }};
 constexpr std::size_t kExecutedSteps = 20;  // B.EQ skips one word; BL/RET visits the final word first.
