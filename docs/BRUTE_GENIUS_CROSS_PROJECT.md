@@ -101,8 +101,8 @@ case. Metronome's harness is domain-specific and is not a drop-in dependency.
 
 ## Acceptance gates
 
-- [ ] MADD/MSUB regression tests compile and pass.
-- [ ] Existing CPU native, Node, and WASM tests pass.
+- [x] Targeted native MADD/MSUB regression tests compile and pass with GCC 14 and Clang 17.
+- [ ] Full `make test` native, Node, and WASM suite passes (CI added; awaiting run).
 - [ ] Differential trace tests run against the pinned Silica-Allah reference.
 - [ ] Sogitech candidate enumeration tests pass and candidate order is stable.
 - [ ] Every evaluated candidate uses the same source-grouped fixtures and seed.
@@ -111,8 +111,8 @@ case. Metronome's harness is domain-specific and is not a drop-in dependency.
 
 ## Current evidence status
 
-- Source inspection identified a decoder predicate defect in MADD/MSUB.
-- Regression test source has been added on this research branch.
-- No compiler, test runner, Cmajor toolchain, Brute Genius worker, or external
-  Metronome job has been executed as part of this authoring step.
+- Source inspection identified and corrected the MADD/MSUB decoder predicate defect.
+- Targeted native MADD/MSUB regression tests passed under GCC 14 and Clang 17 in an isolated shell workspace.
+- A GitHub Actions matrix has been added to run the full native, WASM, and Node test target; its first result is pending.
+- No Cmajor toolchain, Brute Genius worker, or external Metronome job has been executed.
 - No measured performance improvement is claimed.
