@@ -72,6 +72,20 @@ The Python offline renderer is a reference renderer, not a bit-exact
 replacement for the Cmajor processor. Audio claims require separate Cmajor
 compilation and host validation.
 
+## Metronome verification methods inspected
+
+The Metronome v4 branch contains code/tests/machine_lockstep/README.md. Its
+harness compares a Lean executable machine specification with a Python cycle
+model after every cycle, including outputs and a 197-key architectural state
+dump. It also documents directed and random scenarios, a fake simulator with
+bit-flip injection, first-divergence reporting, and a triage rule that forbids
+loosening comparisons to hide mismatches.
+
+The transferable idea is the verification discipline, not its RTL/ASIC code:
+Neuro-Silica should compare CPU state after every instruction; Sogitech should
+compare deterministic encode/decode and parameter invariants for every test
+case. Metronome's harness is domain-specific and is not a drop-in dependency.
+
 ## Cross-project hypotheses (not conclusions)
 
 1. Use Sogitech's fixed-point/quantized parameter fixtures to exercise CPU
@@ -80,10 +94,10 @@ compilation and host validation.
    quantizer/dequantizer round-trip invariants.
 3. Compare scalar reference arithmetic against future optimized CPU paths
    only after a working reference implementation and test vectors exist.
-4. Borrow Metronome verification ideas only after reviewing the exact source
-   and confirming license, semantics, and suitability. Do not import RTL,
-   physical-design assumptions, or tool-specific scripts into the CPU/DSP
-   codebases merely because they share the word "optimization."
+4. Borrow Metronome's per-step lockstep, fault injection, deterministic
+   scenarios, and mismatch-triage discipline. Do not import RTL, Lean build
+   dependencies, physical-design assumptions, or tool-specific scripts into
+   CPU/DSP code merely because they share the word "optimization."
 
 ## Acceptance gates
 
