@@ -65,3 +65,17 @@
 - Add native tests for unsupported opcode, out-of-bounds load, unaligned load, and the SVC yield continuation PC.
 
 **Verification:** GitHub Actions run #18 passed the GCC and Clang native/WASM/Node matrix, sanitizer suites, and pinned-reference differential trace for this branch. This verifies the added fault-PC tests and the exact differential sequence, not general AArch64 exception equivalence.
+
+
+## Follow-up audit — 32-bit MADD/MSUB
+
+**Finding:** The multiply-accumulate decoder matched only the 64-bit encoding family. The pinned Silica-Allah reference implements both W-register and X-register MADD/MSUB; Neuro-Silica was missing the 32-bit forms.
+
+**Change authored on branch `fix/32bit-madd-msub-semantics-20261124`:**
+- Decode both 32-bit and 64-bit MADD/MSUB.
+- Mask W-register multiplicands and accumulator to 32 bits.
+- Truncate the result to 32 bits and zero-extend it into the architectural X register.
+- Add native tests with nonzero upper halves in the source registers to prove W-form inputs ignore those bits.
+- Extend the pinned per-instruction differential trace with W-form MADD and MSUB.
+
+**Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. Prior passing runs do not cover the new W-form multiply instructions.
