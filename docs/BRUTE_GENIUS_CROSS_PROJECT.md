@@ -2,7 +2,7 @@
 
 **Author:** Lewis James Seals Jr. (ljrseals-dev)  
 **SPDX-License-Identifier:** MIT  
-**Status:** PARTIALLY EXECUTED — PINNED DIFFERENTIAL GATE PENDING
+**Status:** PARTIALLY EXECUTED — PINNED DIFFERENTIAL GATE PASSED
 
 ## Purpose
 
@@ -104,7 +104,7 @@ case. Metronome's harness is domain-specific and is not a drop-in dependency.
 
 - [x] Targeted native MADD/MSUB regression tests compile and pass with GCC 14 and Clang 17.
 - [x] Full `make test` native, Node, and WASM suite passes under GCC and Clang in GitHub Actions run #6.
-- [ ] Differential trace tests run against the pinned Silica-Allah reference (CI job added; pending result).
+- [x] Differential trace tests run against pinned Silica-Allah commit `92b4e6751111a03b83080d773ed3b1b34a208d01` (GitHub Actions run #9).
 - [x] Sogitech candidate enumeration and evaluator tests pass in GitHub Actions (Python 3.10–3.12).
 - [ ] Every evaluated candidate uses the same source-grouped fixtures and seed.
 - [ ] Cmajor compile and host validation pass before real-time audio claims.
@@ -117,6 +117,6 @@ case. Metronome's harness is domain-specific and is not a drop-in dependency.
 - GitHub Actions run #6 passed the full `make test` target under both GCC and Clang, including native regression tests, WASM compilation/linking, Node fallback tests, and the WASM ABI harness.
 - CI exposed and drove fixes for the freestanding `string.h` dependency, missing explicit WASM ABI exports, and a harness setup-order bug (the harness had populated memory before `init_cpu`, which wipes memory).
 - Sogitech candidate enumeration and evaluator tests passed in GitHub Actions run #99 on Python 3.10, 3.11, and 3.12.
-- A new differential CI job now checks out Silica-Allah at pinned commit `92b4e6751111a03b83080d773ed3b1b34a208d01` and runs the per-instruction state trace. Its first result is pending.
+- GitHub Actions run #9 checked out Silica-Allah at pinned commit `92b4e6751111a03b83080d773ed3b1b34a208d01`, built both independent probe binaries with Clang and `-Werror` on the reference build, and reported `Differential state traces match for the declared common subset.` The trace covers PC, SP, NZCV, X0–X30, and the test data word after each executed instruction, including MADD/MSUB.
 - Cmajor validation, Brute Genius worker runs, and external Metronome jobs have not been executed.
 - No measured performance improvement is claimed.
