@@ -238,12 +238,45 @@ bool Cpu::execute_one() {
     return true;
   }
 
-  // ADD Xd, Xn, Xm (unshifted register form).
-  if ((ins & 0xFFE0FC00u) == 0x8B000000u) {
+  // ADD (shifted register), 32-bit and 64-bit forms.
+  // Extended-register ADD is intentionally not implemented (bit 21 must be 0).
+  if ((ins & 0x1F200000u) == 0x0B000000u &&
+      (ins & 0x60000000u) == 0) {
+    const bool is_64 = (ins >> 31) != 0;
     const unsigned rd = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;
     const unsigned rm = (ins >> 16) & 31u;
-    wr(rd, rr(rn) + rr(rm));
+    const unsigned shift = (ins >> 22) & 3u;
+    const unsigned amount = (ins >> 10) & 63u;
+    const unsigned width = is_64 ? 64u : 32u;
+    if (shift == 3u || amount >= width) {
+      mem.raise_fault(FaultReason::UnsupportedOpcode);
+      return false;
+    }
+
+    uint64_t operand = rr(rm);
+    if (!is_64) operand = static_cast<uint32_t>(operand);
+    if (amount != 0) {
+      if (shift == 0u) {
+        operand = is_64 ? (operand << amount)
+                        : static_cast<uint32_t>(operand << amount);
+      } else if (shift == 1u) {
+        operand = is_64 ? (operand >> amount)
+                        : static_cast<uint32_t>(operand >> amount);
+      } else if (is_64) {
+        operand = static_cast<uint64_t>(
+            static_cast<int64_t>(operand) >> amount);
+      } else {
+        operand = static_cast<uint32_t>(
+            static_cast<int32_t>(static_cast<uint32_t>(operand)) >> amount);
+      }
+    }
+
+    const uint64_t lhs = is_64 ? rr(rn)
+                              : static_cast<uint32_t>(rr(rn));
+    const uint64_t result = is_64 ? lhs + operand
+                                  : static_cast<uint32_t>(lhs + operand);
+    wr(rd, result);
     return true;
   }
 
