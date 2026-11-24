@@ -51,7 +51,7 @@ void emit_u64(uint64_t value) {
 
 #if defined(SILICA_REFERENCE)
 void run_probe() {
-  silica::Cpu cpu(16u * 1024u * 1024u);
+  static silica::Cpu cpu(16u * 1024u * 1024u);
   cpu.regs.x[3] = kDataBase;
   cpu.mem.write<uint64_t>(kDataBase, 0x1122334455667788ull);
   if (!cpu.load_program(kCodeBase, std::span<const uint32_t>(kProgram))) {
@@ -82,7 +82,7 @@ void run_probe() {
 }
 #elif defined(SILICA_NEURO)
 void run_probe() {
-  silica::Cpu cpu;
+  static silica::Cpu cpu;
   cpu.reset();
   cpu.regs.x[3] = kDataBase;
   cpu.mem.store64(kDataBase, 0x1122334455667788ull);
