@@ -298,7 +298,7 @@ bool Cpu::execute_one() {
   }
 
   // A64 32-bit and 64-bit MADD/MSUB; W results zero-extend.
-  const multiply_opcode = ins & 0x7FE08000u;
+  const uint32_t multiply_opcode = ins & 0x7FE08000u;
   if (multiply_opcode == 0x1B000000u ||
       multiply_opcode == 0x1B008000u) {
     const bool is_64 = (ins >> 31) != 0;
