@@ -10,6 +10,7 @@
  * Do not link both engines into one process: both publish namespace silica.
  */
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
