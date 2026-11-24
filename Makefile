@@ -32,7 +32,7 @@ build/differential_probe_neuro: tests/differential/probe.cpp src/silica/cpu.cpp 
 	$(CXX) $(NATIVE_FLAGS) -DSILICA_NEURO tests/differential/probe.cpp src/silica/cpu.cpp -o $@
 
 mutation:
-	sh tests/mutation/madd_dispatch.sh
+	CXX="$(CXX)" sh tests/mutation/madd_dispatch.sh
 
 differential: build/differential_probe_reference build/differential_probe_neuro
 	./build/differential_probe_reference > build/differential/reference.trace
