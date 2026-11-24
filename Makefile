@@ -7,7 +7,8 @@ WASM_LD ?= wasm-ld
 NATIVE_FLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Isrc
 WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib -Isrc -Wall -Wextra
 WASM_LDFLAGS ?= --no-entry --export-dynamic --export-memory --allow-undefined --initial-memory=33554432 --max-memory=33554432
-.PHONY: all native wasm test clean
+SILICA_ALLAH_DIR ?= ../Silica-Allah
+.PHONY: all native wasm test differential clean
 all: native wasm
 build:
 	mkdir -p build
@@ -20,6 +21,20 @@ build/silica_wasm.o: src/silica_wasm.cpp src/silica/cpu.hpp | build
 build/silica-core.wasm: build/cpu.o build/silica_wasm.o
 	$(WASM_LD) $(WASM_LDFLAGS) $^ -o $@
 native: build/native_core_test
+
+build/differential_probe_reference: tests/differential/probe.cpp $(wildcard $(SILICA_ALLAH_DIR)/include/silica/*.hpp) | build
+	mkdir -p build/differential
+	$(CXX) -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror -DSILICA_REFERENCE -I$(SILICA_ALLAH_DIR)/include tests/differential/probe.cpp -o $@
+
+build/differential_probe_neuro: tests/differential/probe.cpp src/silica/cpu.cpp src/silica/cpu.hpp | build
+	mkdir -p build/differential
+	$(CXX) $(NATIVE_FLAGS) -DSILICA_NEURO tests/differential/probe.cpp src/silica/cpu.cpp -o $@
+
+differential: build/differential_probe_reference build/differential_probe_neuro
+	./build/differential_probe_reference > build/differential/reference.trace
+	./build/differential_probe_neuro > build/differential/neuro.trace
+	diff -u build/differential/reference.trace build/differential/neuro.trace
+	@echo "Differential state traces match for the declared common subset."
 wasm: build/silica-core.wasm
 test: native wasm
 	./build/native_core_test
