@@ -52,3 +52,16 @@
 - Extend the pinned Silica-Allah per-instruction state trace with the same operations and a negative ASR operand.
 
 **Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. The earlier run #15 does not cover these new changes and is not evidence for them.
+
+
+## Follow-up audit — faulting instruction PC
+
+**Finding:** `Cpu::execute_one()` advanced PC before decode/execute. On an unsupported opcode, address-overflow failure, or data-memory fault, the function returned with PC pointing to the following instruction. The pinned Silica-Allah reference restores the faulting instruction address when its memory fault flag is set and leaves PC unchanged for invalid instructions. Neuro-Silica's externally visible fault state therefore did not match the reference's PC behavior.
+
+**Change authored on branch `fix/fault-pc-rollback-20261124`:**
+- Restore PC to the faulting instruction address for unsupported opcodes and effective-address overflow.
+- Restore PC after failed data loads/stores, including alignment and bounds faults.
+- Preserve the prototype's SVC #0 host-yield contract: a successful yield leaves PC at the following instruction so the host callback can resume there.
+- Add native tests for unsupported opcode, out-of-bounds load, unaligned load, and the SVC yield continuation PC.
+
+**Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. Earlier passing runs do not cover this change.
