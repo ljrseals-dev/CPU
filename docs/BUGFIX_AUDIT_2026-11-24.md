@@ -37,3 +37,18 @@
 - The native regression suite also passed under AddressSanitizer and UndefinedBehaviorSanitizer with both GCC and Clang.
 - A successful differential trace proves agreement only for the exact instructions and states exercised by that trace. It does not establish complete AArch64 conformance.
 - Unsupported instructions remain unsupported. This is not a complete AArch64 emulator, and no CPU/GPU equivalence or production-readiness claim is made.
+
+
+## Follow-up audit — ADD (shifted register)
+
+**Finding:** The previous decoder only matched the 64-bit ADD register encoding with a zero shift amount. It did not implement the general A64 ADD (shifted register) form even though that instruction family is part of the pinned reference's supported subset. This was a coverage gap, not a claim that nonzero shifts were silently executed incorrectly.
+
+**Change authored on branch `fix/add-shifted-register-semantics-20261124`:**
+- Decode 32-bit and 64-bit ADD (shifted register) forms.
+- Implement LSL, LSR, and ASR using the encoded shift type and amount.
+- Preserve W-register zero-extension and XZR behavior.
+- Reject reserved ROR shift type and out-of-range 32-bit shift amounts as unsupported.
+- Add native regressions for 64-bit LSL/LSR/ASR, 32-bit LSL/LSR, and invalid encodings.
+- Extend the pinned Silica-Allah per-instruction state trace with the same operations and a negative ASR operand.
+
+**Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. The earlier run #15 does not cover these new changes and is not evidence for them.
