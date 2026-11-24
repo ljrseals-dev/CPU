@@ -8,7 +8,7 @@ NATIVE_FLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Isrc
 WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib -Isrc -Wall -Wextra
 WASM_LDFLAGS ?= --no-entry --export-memory --export=init_cpu --export=step --export=set_reg --export=get_reg --export=get_fault --export=memory_base --export=get_yielded --export=clear_yielded --export=reset_cpu --allow-undefined --initial-memory=33554432 --max-memory=33554432
 SILICA_ALLAH_DIR ?= ../Silica-Allah
-.PHONY: all native wasm test differential clean
+.PHONY: all native wasm test differential mutation clean
 all: native wasm
 build:
 	mkdir -p build
@@ -36,10 +36,16 @@ differential: build/differential_probe_reference build/differential_probe_neuro
 	./build/differential_probe_neuro > build/differential/neuro.trace
 	diff -u build/differential/reference.trace build/differential/neuro.trace
 	@echo "Differential state traces match for the declared common subset."
+
+mutation: native
+	./build/native_core_test
+	CXX="$(CXX)" sh tests/mutation/bl_link_mutant.sh
+
 wasm: build/silica-core.wasm
 test: native wasm
 	./build/native_core_test
 	node tests/memt1_fallback.test.js
 	node tests/critic_harness.test.mjs
+	$(MAKE) mutation CXX="$(CXX)"
 clean:
 	rm -rf build
