@@ -2,7 +2,7 @@
 
 **Author:** Lewis James Seals Jr. (ljrseals-dev)  
 **License:** MIT  
-**Status:** Core, Node, WASM, mutation, and differential CI passed; sanitizer matrix pending.
+**Status:** VERIFIED by GitHub Actions run #15 — GCC, Clang, ASan/UBSan, Node, WASM, mutation, and pinned-reference differential jobs passed.
 
 ## Confirmed defects addressed in this change
 
@@ -27,12 +27,13 @@
 - A mutation target removes BL's X30 write and requires the native regression suite to kill that mutant.
 - Every defined B.cond predicate is checked over all 16 NZCV states.
 - Added an ASan/UBSan native test target and wired it into the GCC/Clang CI matrix.
-- The pinned-reference differential program now includes SUBS with SP, BL, and RET X30 in its per-instruction state trace. This new extension awaits the pull request's CI result.
+- The pinned-reference differential program includes SUBS with SP, BL, RET X30, and the continuation instruction; the expanded trace passed in GitHub Actions run #15.
 
 ## Verification boundaries
 
 - The branch is based on the latest main after PR #8 (native/WASM/Node matrix) and PR #9 (pinned Silica-Allah differential gate).
-- This authoring session could not clone the repository because the execution environment could not resolve github.com. No local compiler or Node command ran here.
-- The existing CI workflow is expected to execute native, WASM, Node, mutation, and differential checks on this pull request. Its results must be inspected before claiming these new changes pass.
+- This authoring session could not clone the repository because the execution environment could not resolve github.com; validation therefore ran on GitHub-hosted runners rather than this local environment.
+- GitHub Actions run #15 passed the complete native/Node/WASM/mutation suite under both GCC and Clang, and passed the expanded pinned Silica-Allah differential trace.
+- The native regression suite also passed under AddressSanitizer and UndefinedBehaviorSanitizer with both GCC and Clang.
 - A successful differential trace proves agreement only for the exact instructions and states exercised by that trace. It does not establish complete AArch64 conformance.
 - Unsupported instructions remain unsupported. This is not a complete AArch64 emulator, and no CPU/GPU equivalence or production-readiness claim is made.
