@@ -217,6 +217,25 @@ static void multiply_accumulate_32bit_test() {
   assert(cpu.regs.x[4] == 0xFFFFFFE9u);
 }
 
+static void decode_cache_self_modifying_code_test() {
+  static Cpu cpu;
+  cpu.reset();
+  cpu.mem.store32(0x1000, 0xD2800020u);  // MOVZ X0, #1
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.regs.x[0] == 1u);
+  assert(cpu.regs.pc == 0x1004u);
+
+  // Reuse the same PC with a different instruction class. A PC-only cache
+  // would incorrectly retain MOVZ; the cache must validate the fetched word.
+  cpu.mem.store32(0x1000, 0xD65F0060u);  // RET X3
+  cpu.regs.x[3] = 0x2000u;
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::None);
+  assert(cpu.regs.pc == 0x2000u);
+}
+
 static void fault_pc_rollback_test() {
   static Cpu cpu;
 
@@ -266,5 +285,6 @@ int main() {
   multiply_accumulate_32bit_test();
   add_shifted_register_test();
   fault_pc_rollback_test();
+  decode_cache_self_modifying_code_test();
   std::cout << "native core regression tests passed\n";
 }

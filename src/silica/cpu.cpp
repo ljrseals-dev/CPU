@@ -89,6 +89,7 @@ void Cpu::reset() {
   regs = Registers{};
   mem.wipe();
   yielded = false;
+  dcache.invalidate();
 }
 
 bool Cpu::execute_one() {
@@ -97,6 +98,7 @@ bool Cpu::execute_one() {
   const uint64_t pc0 = regs.pc;
   const uint32_t ins = mem.load32(pc0);
   if (mem.fault() != FaultReason::None) return false;
+  const InstructionKind kind = dcache.lookup_or_decode(pc0, ins);
   regs.pc = pc0 + 4;
   const auto fail = [this, pc0](FaultReason reason) {
     mem.raise_fault(reason);
@@ -115,7 +117,7 @@ bool Cpu::execute_one() {
   };
 
   // SVC #0 is the prototype's host-yield trap when X8 carries 0xFF.
-  if (ins == 0xD4000001u) {
+  if (kind == InstructionKind::Svc) {
     if (rr(8) == 0xFFu) {
       yielded = true;
       return false;
@@ -124,14 +126,14 @@ bool Cpu::execute_one() {
   }
 
   // RET Xn (including the conventional RET X30).
-  if ((ins & 0xFFFFFC1Fu) == 0xD65F0000u) {
+  if (kind == InstructionKind::Ret) {
     const unsigned rn = (ins >> 5) & 31u;
     regs.pc = rr(rn);
     return true;
   }
 
   // MOVZ Xd, #imm{, LSL #shift}.
-  if ((ins & 0xFF800000u) == 0xD2800000u) {
+  if (kind == InstructionKind::MovZ) {
     const unsigned rd = ins & 31u;
     const unsigned shift = ((ins >> 21) & 3u) * 16u;
     const uint64_t immediate = (ins >> 5) & 0xFFFFu;
@@ -140,7 +142,7 @@ bool Cpu::execute_one() {
   }
 
   // SUBS Xd, Xn|SP, #imm{, LSL #12}; Rd=31 discards into XZR.
-  if ((ins & 0xFF800000u) == 0xF1000000u) {
+  if (kind == InstructionKind::SubsImm) {
     const unsigned rn = (ins >> 5) & 31u;
     const uint64_t immediate =
         uint64_t((ins >> 10) & 0xFFFu) << (((ins >> 22) & 1u) * 12u);
@@ -156,7 +158,7 @@ bool Cpu::execute_one() {
   }
 
   // B.cond.
-  if ((ins & 0xFF000010u) == 0x54000000u) {
+  if (kind == InstructionKind::BCond) {
     const unsigned condition = ins & 15u;
     const int32_t offset = static_cast<int32_t>(ins << 8) >> 13;
     const bool n = (regs.nzcv & 8u) != 0;
@@ -187,7 +189,7 @@ bool Cpu::execute_one() {
   }
 
   // B and BL share the imm26 layout; BL additionally writes X30.
-  if ((ins & 0x7C000000u) == 0x14000000u) {
+  if (kind == InstructionKind::Branch) {
     const int32_t offset = static_cast<int32_t>(ins << 6) >> 6;
     if ((ins & 0x80000000u) != 0) regs.x[30] = pc0 + 4;
     regs.pc = pc0 + static_cast<int64_t>(offset) * 4;
@@ -195,8 +197,7 @@ bool Cpu::execute_one() {
   }
 
   // LDR/STR X, [Xn|SP, #imm12 * 8].
-  if ((ins & 0xFFC00000u) == 0xF9400000u ||
-      (ins & 0xFFC00000u) == 0xF9000000u) {
+  if (kind == InstructionKind::LdrStrUnsigned) {
     const unsigned rt = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;
     const uint64_t offset = uint64_t((ins >> 10) & 0xFFFu) * 8u;
@@ -222,8 +223,7 @@ bool Cpu::execute_one() {
   }
 
   // LDR/STR X, [Xn|SP, Xm, LSL #3].
-  if ((ins & 0xFFE0FC00u) == 0xF8607800u ||
-      (ins & 0xFFE0FC00u) == 0xF8207800u) {
+  if (kind == InstructionKind::LdrStrRegister) {
     const unsigned rt = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;
     const unsigned rm = (ins >> 16) & 31u;
@@ -254,8 +254,7 @@ bool Cpu::execute_one() {
 
   // ADD (shifted register), 32-bit and 64-bit forms.
   // Extended-register ADD is intentionally not implemented (bit 21 must be 0).
-  if ((ins & 0x1F200000u) == 0x0B000000u &&
-      (ins & 0x60000000u) == 0) {
+  if (kind == InstructionKind::AddShifted) {
     const bool is_64 = (ins >> 31) != 0;
     const unsigned rd = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;
@@ -299,8 +298,7 @@ bool Cpu::execute_one() {
 
   // A64 32-bit and 64-bit MADD/MSUB; W results zero-extend.
   const uint32_t multiply_opcode = ins & 0x7FE08000u;
-  if (multiply_opcode == 0x1B000000u ||
-      multiply_opcode == 0x1B008000u) {
+  if (kind == InstructionKind::MaddMsub) {
     const bool is_64 = (ins >> 31) != 0;
     const unsigned rd = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;

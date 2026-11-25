@@ -5,6 +5,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#include "silica/decode_cache.hpp"
 namespace silica {
 enum class FaultReason : uint8_t {
   None = 0,
@@ -50,6 +51,7 @@ public:
   void run(int);
 
 private:
+  DecodeCache dcache{};
   bool execute_one();
 };
 } // namespace silica
