@@ -4,7 +4,6 @@
  */
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -81,7 +80,7 @@ class DecodeCache {
   }
 
  private:
-  std::array<DecodeCacheEntry, DECODE_CACHE_SETS> entries_{};
+  DecodeCacheEntry entries_[DECODE_CACHE_SETS]{};
 };
 
 }  // namespace silica
