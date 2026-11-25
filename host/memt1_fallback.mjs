@@ -52,9 +52,8 @@ export function cpuMatrixUpdate(mem, matrixAddr, gamma, omega, keyAddr, valAddr)
   assertU64(gamma, "gamma");
   assertU64(omega, "omega");
 
-  // Snapshot all inputs before writing. This prevents a read failure or
-  // overlapping input/output regions from making later cells depend on
-  // earlier writes in the same matrix update.
+  // Snapshot every input before writing so read failures and overlapping
+  // input/output regions cannot make later cells depend on earlier writes.
   const keys = Array.from({ length: 4 }, (_, i) =>
     readU64(mem, keyAddr + i * 8, "key[" + i + "]"));
   const values = Array.from({ length: 4 }, (_, j) =>
@@ -67,8 +66,10 @@ export function cpuMatrixUpdate(mem, matrixAddr, gamma, omega, keyAddr, valAddr)
   for (let i = 0; i < 4; i++) {
     for (let j = 0; j < 4; j++) {
       const index = i * 4 + j;
-      const forget = ((matrix[index] * gamma) & U64_MASK) >> 8n;
-      const write = ((keys[i] * values[j] * omega) & U64_MASK) >> 8n;
+      // Preserve the documented modulo-2^64 result AFTER the fixed-point
+      // shift. Masking the product before shifting changes high-bit inputs.
+      const forget = ((matrix[index] * gamma) >> 8n) & U64_MASK;
+      const write = ((keys[i] * values[j] * omega) >> 8n) & U64_MASK;
       outputs[index] = (forget + write) & U64_MASK;
     }
   }

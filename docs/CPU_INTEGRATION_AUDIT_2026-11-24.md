@@ -1,7 +1,7 @@
 # CPU Correctness Integration Audit — 2026-11-24
 
 **Author:** Lewis James Seals Jr. (@ljrseals-dev)
-**Status:** SOURCE-AUDITED — NOT BUILD-VERIFIED
+**Status:** FOLLOW-UP FIXES AUTHORED — CI RE-RUN REQUIRED
 **Branch:** `audit/integration-cpu-correctness-20261124`
 **Baseline:** current `main` after PR #14 (Corrected Baseline Bug Fix)
 
@@ -35,7 +35,7 @@ These are source-inspection findings, not runtime test results.
 
 - **AUTHORED:** consolidated `src/silica/cpu.cpp` with the fault-PC rollback baseline, checked address arithmetic, BL/RET Xn, SUBS SP-source semantics, shifted ADD (W/X), and W/X MADD/MSUB.
 - **AUTHORED:** added W-register MADD/MSUB native regression tests using operands with nonzero upper halves.
-- **NOT YET CONSOLIDATED:** MEMT1 fallback safe-snapshot/input validation changes, W-form instructions in the differential probe, and full CI workflow review.
+- **CONSOLIDATED:** MEMT1 fallback validation/snapshotting, W-form instructions in the differential probe, and CI workflow changes are present on the integration branch.
 - **NOT BUILD-VERIFIED:** no local compiler/test run has occurred.
 
 
@@ -59,11 +59,11 @@ These are source-inspection findings, not runtime test results.
 
 ## Verification status
 
-**No build, native test, Node test, WASM build, mutation run, or differential run was performed in this audit step.** GitHub source/patch inspection only. Existing CI pass statements in PR descriptions are historical claims and were not independently re-run here.
+**CI evidence for PR #15 head e489e164:** native regression suite passed under GCC and Clang; WASM builds passed under both; MEMT1 Node tests passed 6/6; differential job reported success. However, both complete native jobs failed at `tests/critic_harness.test.mjs:75` because the ESM fallback masked the multiplication product before the fixed-point shift. Sanitizer/mutation steps did not run after `make test` failed. The differential probe was also found to have a control-flow layout that did not execute the appended W-form cases despite a successful trace comparison.
 
 ## Consolidation status update
 
-The integration branch now contains authored CPU decoder changes and native tests. It is intentionally not yet a complete consolidation of PR #10–#13: MEMT1 fallback source/tests and the differential probe remain outstanding. The source-level integration is committed, but must be reviewed and built before opening a merge-ready PR.
+PR #15 was merged to `main` at merge commit `446e6a5d39f17b83bd6fe1aa9bc8851fc17a077d`. A post-merge follow-up fixes the MEMT1 arithmetic ordering and rearranges the differential probe so the W-form instructions are actually reached. Those follow-up commits are not part of the PR #15 merge and require their own CI run.
 
 
 ## Further consolidation — MEMT1 and verification harness
@@ -81,3 +81,11 @@ The integration branch now contains authored CPU decoder changes and native test
 2. Review the exact instruction encodings and expected W-register values in the differential trace.
 3. Check the host adapter's old callback argument mapping and ESM import paths in the full project.
 4. Validate the mutation script and ensure the sanitizer target is compatible with both GCC and Clang runners.
+
+
+## Post-merge follow-up — authored, awaiting CI
+
+- **FIXED:** MEMT1 fixed-point arithmetic now performs the 8-bit shift before applying the modulo-2^64 mask, matching the canonical implementation and the WASM critic harness expected value.
+- **FIXED:** differential program control flow now calls the RET callee, resumes at the continuation, branches around the callee, and executes the appended W-form ADD/MADD/MSUB instructions. The declared trace count is 19 executed instructions.
+- **CI REQUIRED:** run complete GCC/Clang native, WASM, Node, sanitizer, mutation, and differential jobs against the follow-up head before any further merge.
+- **LIMITATION:** MEMT1 staged writes still cannot guarantee rollback if a write callback itself fails partway through; the callback API has no transactional write primitive.
