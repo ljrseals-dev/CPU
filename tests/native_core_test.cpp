@@ -186,6 +186,22 @@ static void add_shifted_register_test() {
   assert(cpu.mem.fault() == FaultReason::UnsupportedOpcode);
 }
 
+
+static void multiply_accumulate_32bit_test() {
+  static Cpu cpu;
+  cpu.reset();
+  cpu.regs.x[1] = 0xDEADBEEF00000006ull;
+  cpu.regs.x[2] = 0xFFFFFFFF00000005ull;
+  cpu.regs.x[3] = 0xAAAAAAAA00000007ull;
+  cpu.mem.store32(0x1000, 0x1B020C20u);  // MADD W0, W1, W2, W3
+  cpu.mem.store32(0x1004, 0x1B028C24u);  // MSUB W4, W1, W2, W3
+  cpu.regs.pc = 0x1000;
+  cpu.run(2);
+  assert(cpu.mem.fault() == FaultReason::None);
+  assert(cpu.regs.x[0] == 37u);
+  assert(cpu.regs.x[4] == 0xFFFFFFE9u);
+}
+
 static void multiply_accumulate_test() {
   static Cpu cpu;
   cpu.reset();
@@ -248,6 +264,7 @@ int main() {
   register_offset_wraparound_test();
   little_endian_test();
   multiply_accumulate_test();
+  multiply_accumulate_32bit_test();
   add_shifted_register_test();
   fault_pc_rollback_test();
   std::cout << "native core regression tests passed\n";
