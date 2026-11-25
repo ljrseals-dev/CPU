@@ -37,3 +37,45 @@
 - The native regression suite also passed under AddressSanitizer and UndefinedBehaviorSanitizer with both GCC and Clang.
 - A successful differential trace proves agreement only for the exact instructions and states exercised by that trace. It does not establish complete AArch64 conformance.
 - Unsupported instructions remain unsupported. This is not a complete AArch64 emulator, and no CPU/GPU equivalence or production-readiness claim is made.
+
+
+## Follow-up audit — ADD (shifted register)
+
+**Finding:** The previous decoder only matched the 64-bit ADD register encoding with a zero shift amount. It did not implement the general A64 ADD (shifted register) form even though that instruction family is part of the pinned reference's supported subset. This was a coverage gap, not a claim that nonzero shifts were silently executed incorrectly.
+
+**Change authored on branch `fix/add-shifted-register-semantics-20261124`:**
+- Decode 32-bit and 64-bit ADD (shifted register) forms.
+- Implement LSL, LSR, and ASR using the encoded shift type and amount.
+- Preserve W-register zero-extension and XZR behavior.
+- Reject reserved ROR shift type and out-of-range 32-bit shift amounts as unsupported.
+- Add native regressions for 64-bit LSL/LSR/ASR, 32-bit LSL/LSR, and invalid encodings.
+- Extend the pinned Silica-Allah per-instruction state trace with the same operations and a negative ASR operand.
+
+**Verification status:** AUTHORED — CI NOT YET RUN for this follow-up branch. The earlier run #15 does not cover these new changes and is not evidence for them.
+
+
+## Follow-up audit — faulting instruction PC
+
+**Finding:** `Cpu::execute_one()` advanced PC before decode/execute. On an unsupported opcode, address-overflow failure, or data-memory fault, the function returned with PC pointing to the following instruction. The pinned Silica-Allah reference restores the faulting instruction address when its memory fault flag is set and leaves PC unchanged for invalid instructions. Neuro-Silica's externally visible fault state therefore did not match the reference's PC behavior.
+
+**Change authored on branch `fix/fault-pc-rollback-20261124`:**
+- Restore PC to the faulting instruction address for unsupported opcodes and effective-address overflow.
+- Restore PC after failed data loads/stores, including alignment and bounds faults.
+- Preserve the prototype's SVC #0 host-yield contract: a successful yield leaves PC at the following instruction so the host callback can resume there.
+- Add native tests for unsupported opcode, out-of-bounds load, unaligned load, and the SVC yield continuation PC.
+
+**Verification:** GitHub Actions run #18 passed the GCC and Clang native/WASM/Node matrix, sanitizer suites, and pinned-reference differential trace for this branch. This verifies the added fault-PC tests and the exact differential sequence, not general AArch64 exception equivalence.
+
+
+## Follow-up audit — 32-bit MADD/MSUB
+
+**Finding:** The multiply-accumulate decoder matched only the 64-bit encoding family. The pinned Silica-Allah reference implements both W-register and X-register MADD/MSUB; Neuro-Silica was missing the 32-bit forms.
+
+**Change authored on branch `fix/32bit-madd-msub-semantics-20261124`:**
+- Decode both 32-bit and 64-bit MADD/MSUB.
+- Mask W-register multiplicands and accumulator to 32 bits.
+- Truncate the result to 32 bits and zero-extend it into the architectural X register.
+- Add native tests with nonzero upper halves in the source registers to prove W-form inputs ignore those bits.
+- Extend the pinned per-instruction differential trace with W-form MADD and MSUB.
+
+**Verification:** GitHub Actions run #20 passed GCC and Clang native/WASM/Node jobs, ASan/UBSan suites, and the pinned Silica-Allah per-instruction trace containing the W-form MADD/MSUB cases. This establishes agreement only for those exact test vectors.
