@@ -93,6 +93,28 @@ static void subs_uses_sp_for_rn31_test() {
   assert(cpu.regs.sp == 5);       // SUBS does not write SP when Rd is XZR.
 }
 
+static void subs_writes_destination_test() {
+  static Cpu cpu;
+  cpu.reset();
+  cpu.regs.x[1] = 5;
+  cpu.mem.store32(0x1000, 0xF1000420u);  // SUBS X0, X1, #1
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::None);
+  assert(cpu.regs.x[0] == 4u);
+  assert(cpu.regs.nzcv == 0x2u);
+
+  cpu.reset();
+  cpu.regs.sp = 5;
+  cpu.mem.store32(0x1000, 0xF10007E0u);  // SUBS X0, SP, #1
+  cpu.regs.pc = 0x1000;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::None);
+  assert(cpu.regs.x[0] == 4u);
+  assert(cpu.regs.sp == 5u);
+  assert(cpu.regs.nzcv == 0x2u);
+}
+
 static void bounds_and_alignment_test() {
   static Cpu cpu;
   cpu.reset();
@@ -277,6 +299,7 @@ int main() {
   all_branch_conditions_test();
   bl_and_ret_register_test();
   subs_uses_sp_for_rn31_test();
+  subs_writes_destination_test();
   bounds_and_alignment_test();
   address_wraparound_test();
   register_offset_wraparound_test();
