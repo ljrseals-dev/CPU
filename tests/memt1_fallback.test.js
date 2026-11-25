@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { cpuMatrixUpdate, U64_MASK } from "../host/memt1_fallback.mjs";
+import { cpuMatrixUpdate as cpuMatrixUpdateLegacy } from "../host/memt1_fallback.js";
 
 function fixture(initial = 0n) {
   const mem = new Map();
@@ -89,4 +90,17 @@ test("fallback stages all reads before the first matrix write", () => {
   assert.throws(() => cpuMatrixUpdate(mem, 0x2000, 1n, 1n, 0x3000, 0x3100),
     /simulated read fault/);
   assert.equal(writes.length, 0);
+});
+
+test("legacy .js entry point delegates to checked MEMT1 implementation", () => {
+  let reads = 0;
+  let writes = 0;
+  const mem = {
+    read64: () => { reads++; return 0n; },
+    write64: () => { writes++; },
+  };
+  assert.throws(() => cpuMatrixUpdateLegacy(
+    mem, 0x2001, 1n, 1n, 0x3000, 0x3100), /8-byte aligned/);
+  assert.equal(reads, 0);
+  assert.equal(writes, 0);
 });
