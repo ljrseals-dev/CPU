@@ -22,6 +22,15 @@ constexpr bool in_range_s(int32_t value, unsigned bits) noexcept {
 constexpr u mask(unsigned bits) noexcept {
   return bits >= 32 ? ~u{0} : (bits == 0 ? 0u : (u{1} << bits) - 1u);
 }
+constexpr u bits(u value, unsigned lo, unsigned hi) noexcept {
+  if (lo > hi || hi >= 32) return 0;
+  const unsigned width = hi - lo + 1;
+  return (value >> lo) & mask(width);
+}
+constexpr bool is_valid_rd(u r) noexcept { return r <= 31; }
+constexpr bool is_valid_imm12(u i) noexcept { return i <= 0xFFF; }
+constexpr bool is_valid_imm16(u i) noexcept { return i <= 0xFFFF; }
+constexpr bool is_valid_cond(u c) noexcept { return c <= 14; }
 } // namespace detail
 
 // ADD/SUB (immediate). sf=1 selects X registers; sh=1 shifts imm12 by 12.
@@ -70,12 +79,21 @@ constexpr u cbz_cbnz(u sf, u nz, int32_t words, u rt) noexcept {
 constexpr u cbz(u sf, int32_t words, u rt) noexcept { return cbz_cbnz(sf, 0, words, rt); }
 constexpr u cbnz(u sf, int32_t words, u rt) noexcept { return cbz_cbnz(sf, 1, words, rt); }
 
+// Variable shifts (LSLV / LSRV / ASRV / RORV).
+constexpr u var_shift(u sf, u opcode, u rm, u rn, u rd) noexcept {
+  // opcode: 0=LSL, 1=LSR, 2=ASR, 3=ROR
+  return ((sf & 1u) << 31) | 0x1AC02000u | ((rm & 0x1Fu) << 16) |
+         ((opcode & 3u) << 10) | ((rn & 0x1Fu) << 5) | (rd & 0x1Fu);
+}
+constexpr u lslv(u rd, u rn, u rm, u sf = 1) noexcept { return var_shift(sf, 0, rm, rn, rd); }
+constexpr u lsrv(u rd, u rn, u rm, u sf = 1) noexcept { return var_shift(sf, 1, rm, rn, rd); }
+constexpr u asrv(u rd, u rn, u rm, u sf = 1) noexcept { return var_shift(sf, 2, rm, rn, rd); }
+constexpr u rorv(u rd, u rn, u rm, u sf = 1) noexcept { return var_shift(sf, 3, rm, rn, rd); }
+
 constexpr u br(u rn) noexcept { return 0xD61F0000u | ((rn & 31u) << 5); }
 constexpr u blr(u rn) noexcept { return 0xD63F0000u | ((rn & 31u) << 5); }
 constexpr u ret(u rn = 30) noexcept { return 0xD65F0000u | ((rn & 31u) << 5); }
 
-// Unsigned-offset load/store. size: B/H/W/X = 0/1/2/3;
-// opc: store/load/sign-extend-to-X/sign-extend-to-W = 0/1/2/3.
 constexpr u ldst_uimm(u size, u opc, u imm12, u rn, u rt) noexcept {
   return ((size & 3u) << 30) | 0x39000000u | ((opc & 3u) << 22) |
          ((imm12 & 0xFFFu) << 10) | ((rn & 31u) << 5) | (rt & 31u);
@@ -89,6 +107,14 @@ constexpr u str_x(u rt, u rn, u byte_offset = 0) noexcept {
 
 constexpr u nop() noexcept { return 0xD503201Fu; }
 constexpr u brk(u imm16 = 0) noexcept { return 0xD4200000u | ((imm16 & 0xFFFFu) << 5); }
+
+// System-register field is the 15-bit op0:op1:CRn:CRm:op2 encoding.
+constexpr u mrs(u field, u rt) noexcept {
+  return 0xD5300000u | ((field & 0x7FFFu) << 5) | (rt & 0x1Fu);
+}
+constexpr u msr(u field, u rt) noexcept {
+  return 0xD5100000u | ((field & 0x7FFFu) << 5) | (rt & 0x1Fu);
+}
 
 constexpr u COND_EQ = 0, COND_NE = 1, COND_CS = 2, COND_CC = 3;
 constexpr u COND_MI = 4, COND_PL = 5, COND_VS = 6, COND_VC = 7;
