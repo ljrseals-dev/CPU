@@ -8,7 +8,7 @@ NATIVE_FLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Isrc
 WASM_FLAGS ?= --target=wasm32 -std=c++20 -O2 -fno-exceptions -fno-rtti -nostdlib -Isrc -Wall -Wextra
 WASM_LDFLAGS ?= --no-entry --export-memory --export=init_cpu --export=step --export=set_reg --export=get_reg --export=get_fault --export=memory_base --export=get_yielded --export=clear_yielded --export=reset_cpu --allow-undefined --initial-memory=33554432 --max-memory=33554432
 SILICA_ALLAH_DIR ?= ../Silica-Allah
-.PHONY: all native wasm test differential mutation san clean
+.PHONY: all native wasm test encoder differential mutation san clean
 all: native wasm
 build:
 	mkdir -p build
@@ -21,6 +21,12 @@ build/silica_wasm.o: src/silica_wasm.cpp src/silica/cpu.hpp | build
 build/silica-core.wasm: build/cpu.o build/silica_wasm.o
 	$(WASM_LD) $(WASM_LDFLAGS) $^ -o $@
 native: build/native_core_test
+
+build/encoder_test: tests/encoder_test.cpp src/silica/enc.hpp | build
+	$(CXX) $(NATIVE_FLAGS) tests/encoder_test.cpp -o $@
+
+encoder: build/encoder_test
+	./build/encoder_test
 
 build/native_core_test_san: tests/native_core_test.cpp src/silica/cpu.cpp src/silica/cpu.hpp src/silica/decode_cache.hpp | build
 	$(CXX) $(NATIVE_FLAGS) -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer tests/native_core_test.cpp src/silica/cpu.cpp -o $@
@@ -49,7 +55,7 @@ mutation: native
 	CXX="$(CXX)" sh tests/mutation/madd_decode_mutant.sh
 
 wasm: build/silica-core.wasm
-test: native wasm
+test: native wasm encoder
 	./build/native_core_test
 	node tests/memt1_fallback.test.js
 	node tests/critic_harness.test.mjs
