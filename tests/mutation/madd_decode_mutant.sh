@@ -8,7 +8,7 @@ trap 'rm -rf "$TMP"' EXIT HUP INT TERM
 
 # Break only the W/X MADD dispatch comparison. The production mask cannot
 # produce this deliberately impossible masked opcode, so MADD must fault.
-sed 's/multiply_opcode == 0x1B000000u/multiply_opcode == 0x1B004000u/' \
+sed 's/multiply_opcode == 0x1B008000u/multiply_opcode == 0x1B004000u/' \
   "$ROOT/src/silica/cpu.cpp" > "$TMP/cpu-mutated.cpp"
 
 if ! grep -q 'multiply_opcode == 0x1B004000u' "$TMP/cpu-mutated.cpp"; then
