@@ -12,9 +12,9 @@ SILICA_ALLAH_DIR ?= ../Silica-Allah
 all: native wasm
 build:
 	mkdir -p build
-build/native_core_test: tests/native_core_test.cpp src/silica/cpu.cpp src/silica/cpu.hpp | build
+build/native_core_test: tests/native_core_test.cpp src/silica/cpu.cpp src/silica/cpu.hpp src/silica/decode_cache.hpp | build
 	$(CXX) $(NATIVE_FLAGS) tests/native_core_test.cpp src/silica/cpu.cpp -o $@
-build/cpu.o: src/silica/cpu.cpp src/silica/cpu.hpp | build
+build/cpu.o: src/silica/cpu.cpp src/silica/cpu.hpp src/silica/decode_cache.hpp | build
 	$(WASM_CXX) $(WASM_FLAGS) -c $< -o $@
 build/silica_wasm.o: src/silica_wasm.cpp src/silica/cpu.hpp | build
 	$(WASM_CXX) $(WASM_FLAGS) -c $< -o $@
@@ -22,7 +22,7 @@ build/silica-core.wasm: build/cpu.o build/silica_wasm.o
 	$(WASM_LD) $(WASM_LDFLAGS) $^ -o $@
 native: build/native_core_test
 
-build/native_core_test_san: tests/native_core_test.cpp src/silica/cpu.cpp src/silica/cpu.hpp | build
+build/native_core_test_san: tests/native_core_test.cpp src/silica/cpu.cpp src/silica/cpu.hpp src/silica/decode_cache.hpp | build
 	$(CXX) $(NATIVE_FLAGS) -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer tests/native_core_test.cpp src/silica/cpu.cpp -o $@
 
 san: build/native_core_test_san
