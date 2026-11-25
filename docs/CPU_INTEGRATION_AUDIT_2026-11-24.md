@@ -52,7 +52,7 @@ These are source-inspection findings, not runtime test results.
 
 - #12's fault rollback should be checked against every faulting path, including instruction fetch faults and any future decoder branch. Fetch faults leave PC unchanged because PC is not incremented until after a successful fetch.
 - #11's ASR implementation uses signed right shift of negative values, which is implementation-defined in C++17; integration should document the supported compiler behavior or implement a portable arithmetic shift explicitly.
-- PR #14 rewrites SUBS with `a = rr(rn)` and `wr(rd, res)`. That reintroduces the Rn=31/SP issue (because `rr(31)` is XZR) and changes SUBS destination behavior compared with #10. Keep #10's correct `base(rn)` source handling and flags-only SUBS behavior unless the ISA subset/spec explicitly requires a destination write.
+- PR #14 rewrites SUBS with `a = rr(rn)` and `wr(rd, res)`. The destination write is required by A64 SUBS semantics; the defect is using `rr` for Rn=31, because it yields XZR instead of SP. Keep `base(rn)` for the source and `wr(rd, result)` for the destination; the write helper naturally discards Rd=31 as XZR.
 - PR #14's memory addressing adds unchecked arithmetic and thereby drops #10's overflow protections.
 - PR #14's RET decoder only recognizes the fixed X30 encoding, dropping #10's general RET Xn support.
 - PR #14's B decoder treats BL as B and does not write X30, dropping #10's link semantics.
@@ -89,3 +89,8 @@ PR #15 was merged to `main` at merge commit `446e6a5d39f17b83bd6fe1aa9bc8851fc17
 - **FIXED:** differential program control flow now calls the RET callee, resumes at the continuation, branches around the callee, and executes the appended W-form ADD/MADD/MSUB instructions. The declared trace count is 19 executed instructions.
 - **CI REQUIRED:** run complete GCC/Clang native, WASM, Node, sanitizer, mutation, and differential jobs against the follow-up head before any further merge.
 - **LIMITATION:** MEMT1 staged writes still cannot guarantee rollback if a write callback itself fails partway through; the callback API has no transactional write primitive.
+
+
+## Follow-up — SUBS immediate destination write
+
+The pinned Silica-Allah semantics implementation at commit `92b4e6751111a03b83080d773ed3b1b34a208d01` writes the computed result to `Rd` in the flag-setting ADD/SUB immediate path. The maintained Neuro-Silica path previously updated NZCV but omitted this destination write. PR #30 adds the missing write while retaining SP as the source when `Rn=31`; `Rd=31` remains discarded as XZR.

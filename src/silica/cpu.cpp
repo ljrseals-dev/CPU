@@ -154,6 +154,7 @@ bool Cpu::execute_one() {
     const bool v = (((a ^ immediate) & (a ^ result)) >> 63) != 0;
     regs.nzcv = (n ? 8u : 0u) | (z ? 4u : 0u) |
                 (c ? 2u : 0u) | (v ? 1u : 0u);
+    wr(ins & 31u, result);  // Rd=31 is XZR; other destinations receive the result.
     return true;
   }
 
