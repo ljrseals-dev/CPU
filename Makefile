@@ -46,6 +46,7 @@ differential: build/differential_probe_reference build/differential_probe_neuro
 mutation: native
 	./build/native_core_test
 	CXX="$(CXX)" sh tests/mutation/bl_link_mutant.sh
+	CXX="$(CXX)" sh tests/mutation/madd_decode_mutant.sh
 
 wasm: build/silica-core.wasm
 test: native wasm
