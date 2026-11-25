@@ -98,6 +98,11 @@ bool Cpu::execute_one() {
   const uint32_t ins = mem.load32(pc0);
   if (mem.fault() != FaultReason::None) return false;
   regs.pc = pc0 + 4;
+  const auto fail = [this, pc0](FaultReason reason) {
+    mem.raise_fault(reason);
+    regs.pc = pc0;
+    return false;
+  };
 
   const auto rr = [this](unsigned r) -> uint64_t {
     return r == 31 ? 0 : regs.x[r];
@@ -197,16 +202,21 @@ bool Cpu::execute_one() {
     const uint64_t offset = uint64_t((ins >> 10) & 0xFFFu) * 8u;
     uint64_t address = 0;
     if (!add_address(base(rn), offset, address)) {
-      mem.raise_fault(FaultReason::Memory);
-      return false;
+      return fail(FaultReason::Memory);
     }
     if ((ins & 0xFFC00000u) == 0xF9400000u) {
       const uint64_t value = mem.load64(address);
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
       wr(rt, value);
     } else {
       mem.store64(address, rr(rt));
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
     }
     return true;
   }
@@ -219,21 +229,25 @@ bool Cpu::execute_one() {
     const unsigned rm = (ins >> 16) & 31u;
     const uint64_t index = rr(rm);
     if (index > (UINT64_MAX >> 3)) {
-      mem.raise_fault(FaultReason::Memory);
-      return false;
+      return fail(FaultReason::Memory);
     }
     uint64_t address = 0;
     if (!add_address(base(rn), index << 3, address)) {
-      mem.raise_fault(FaultReason::Memory);
-      return false;
+      return fail(FaultReason::Memory);
     }
     if ((ins & 0xFFE0FC00u) == 0xF8607800u) {
       const uint64_t value = mem.load64(address);
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
       wr(rt, value);
     } else {
       mem.store64(address, rr(rt));
-      if (mem.fault() != FaultReason::None) return false;
+      if (mem.fault() != FaultReason::None) {
+        regs.pc = pc0;
+        return false;
+      }
     }
     return true;
   }
@@ -250,8 +264,7 @@ bool Cpu::execute_one() {
     const unsigned amount = (ins >> 10) & 63u;
     const unsigned width = is_64 ? 64u : 32u;
     if (shift == 3u || amount >= width) {
-      mem.raise_fault(FaultReason::UnsupportedOpcode);
-      return false;
+      return fail(FaultReason::UnsupportedOpcode);
     }
 
     uint64_t operand = rr(rm);
@@ -280,22 +293,28 @@ bool Cpu::execute_one() {
     return true;
   }
 
-  // A64 64-bit MADD/MSUB; bit 15 selects subtraction and Ra is an operand.
-  const uint32_t multiply_opcode = ins & 0xFFE08000u;
-  if (multiply_opcode == 0x9B000000u ||
-      multiply_opcode == 0x9B008000u) {
+  // A64 32-bit and 64-bit MADD/MSUB; bit 15 selects subtraction.
+  const uint32_t multiply_opcode = ins & 0x7FE08000u;
+  if (multiply_opcode == 0x1B000000u ||
+      multiply_opcode == 0x1B008000u) {
+    const bool is_64 = (ins >> 31) != 0;
     const unsigned rd = ins & 31u;
     const unsigned rn = (ins >> 5) & 31u;
     const unsigned ra = (ins >> 10) & 31u;
     const unsigned rm = (ins >> 16) & 31u;
-    const uint64_t product = rr(rn) * rr(rm);
-    wr(rd, multiply_opcode == 0x9B000000u ? rr(ra) + product
-                                          : rr(ra) - product);
+    const uint64_t lhs = is_64 ? rr(rn) : static_cast<uint32_t>(rr(rn));
+    const uint64_t rhs = is_64 ? rr(rm) : static_cast<uint32_t>(rr(rm));
+    const uint64_t accumulator =
+        is_64 ? rr(ra) : static_cast<uint32_t>(rr(ra));
+    const uint64_t product = lhs * rhs;
+    const uint64_t result = multiply_opcode == 0x1B008000u
+                                ? accumulator - product
+                                : accumulator + product;
+    wr(rd, is_64 ? result : static_cast<uint32_t>(result));
     return true;
   }
 
-  mem.raise_fault(FaultReason::UnsupportedOpcode);
-  return false;
+  return fail(FaultReason::UnsupportedOpcode);
 }
 
 void Cpu::run(int instruction_count) {

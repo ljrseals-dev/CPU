@@ -31,7 +31,7 @@ constexpr uint64_t kCodeBase = 0x1000;
 constexpr uint64_t kDataBase = 0x8000;
 
 // MOVZ; ADD; SUBS; B.EQ skips one decoy; STR/LDR; ADD; MADD/MSUB;
-// SP-based SUBS; BL/RET; then 64-bit LSL/LSR/ASR and 32-bit LSL/LSR ADD.
+// SP-based SUBS; BL/RET; shifted-register ADD; and 32-bit MADD/MSUB.
 constexpr uint32_t add_shifted(unsigned is_64, unsigned shift,
                                unsigned amount, unsigned rm,
                                unsigned rn, unsigned rd) {
@@ -39,7 +39,7 @@ constexpr uint32_t add_shifted(unsigned is_64, unsigned shift,
          (shift << 22) | (rm << 16) | (amount << 10) |
          (rn << 5) | rd;
 }
-constexpr std::array<uint32_t, 19> kProgram{{
+constexpr std::array<uint32_t, 21> kProgram{{
     0xD2800140u,  // MOVZ X0, #10
     0xD28000A1u,  // MOVZ X1, #5
     0x8B010000u,  // ADD X0, X0, X1
@@ -53,14 +53,16 @@ constexpr std::array<uint32_t, 19> kProgram{{
     0x9B021027u,  // MADD X7, X1, X2, X4
     0x9B029028u,  // MSUB X8, X1, X2, X4
     0xF10007FFu,  // SUBS XZR, SP, #1
-    0x94000005u,  // BL +20; X30 receives address of the next word
+    0x94000007u,  // BL +28; X30 receives address of the next word
     0xD280054Au,  // continuation: MOVZ X10, #42
     add_shifted(1, 0, 3, 2, 1, 6),  // ADD X6, X1, X2, LSL #3
     add_shifted(1, 1, 1, 2, 1, 7),  // ADD X7, X1, X2, LSR #1
     add_shifted(1, 2, 1, 9, 1, 8),  // ADD X8, X1, X9, ASR #1
+    0x1B02102Bu,  // MADD W11, W1, W2, W4
+    0x1B02902Cu,  // MSUB W12, W1, W2, W4
     0xD65F03C0u,  // callee: RET X30
 }};
-constexpr std::size_t kExecutedSteps = 18;  // B.EQ skips one word; BL/RET visits the final word first.
+constexpr std::size_t kExecutedSteps = 20;  // B.EQ skips one word; BL/RET visits the final word first.
 
 void emit_u64(uint64_t value) {
   std::cout << std::hex << std::setfill('0') << std::setw(16) << value;
