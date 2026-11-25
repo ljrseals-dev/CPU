@@ -30,9 +30,10 @@ namespace {
 constexpr uint64_t kCodeBase = 0x1000;
 constexpr uint64_t kDataBase = 0x8000;
 
-// MOVZ; ADD; SUBS; B.EQ skips one decoy; STR/LDR; ADD; MADD/MSUB;
-// SUBS XZR,SP,#1; BL +8; return through X30; then execute the continuation.
-constexpr std::array<uint32_t, 19> kProgram{{
+// The branch at word 4 skips one decoy. BL calls the RET at word 16;
+// return continues at word 14, then B skips the callee and reaches all
+// three W-form instructions. Every declared instruction is executed once.
+constexpr std::array<uint32_t, 20> kProgram{{
     0xD2800140u,  // MOVZ X0, #10
     0xD28000A1u,  // MOVZ X1, #5
     0x8B010000u,  // ADD X0, X0, X1
@@ -46,14 +47,15 @@ constexpr std::array<uint32_t, 19> kProgram{{
     0x9B021027u,  // MADD X7, X1, X2, X4
     0x9B029028u,  // MSUB X8, X1, X2, X4
     0xF10007FFu,  // SUBS XZR, SP, #1
-    0x94000002u,  // BL +8; X30 receives address of the next word
+    0x94000003u,  // BL +12; X30 receives address of word 14
     0xD280054Au,  // continuation: MOVZ X10, #42
+    0x14000002u,  // B +8; skip the RET after returning
     0xD65F03C0u,  // callee: RET X30
     0x0B0C0D66u,  // ADD W6, W11, W12, LSL #3
     0x1B0C2527u,  // MADD W7, W11, W12, W9
     0x1B0CA528u,  // MSUB W8, W11, W12, W9
 }};
-constexpr std::size_t kExecutedSteps = kProgram.size() - 1;  // B.EQ skips one word.
+constexpr std::size_t kExecutedSteps = 19;
 
 void emit_u64(uint64_t value) {
   std::cout << std::hex << std::setfill('0') << std::setw(16) << value;
