@@ -236,6 +236,40 @@ static void decode_cache_self_modifying_code_test() {
   assert(cpu.regs.pc == 0x2000u);
 }
 
+
+static void decode_cache_collision_test() {
+  DecodeCache cache;
+  // 0x1000 and 0x5000 map to the same direct-mapped cache set.
+  assert(cache.lookup_or_decode(0x1000, 0xD2800020u) ==
+         InstructionKind::MovZ);
+  assert(cache.lookup_or_decode(0x5000, 0xD65F0060u) ==
+         InstructionKind::Ret);
+  // The evicted entry must be decoded again, not mistaken for the RET.
+  assert(cache.lookup_or_decode(0x1000, 0xD65F0060u) ==
+         InstructionKind::Ret);
+  assert(cache.lookup_or_decode(0x5000, 0xD2800020u) ==
+         InstructionKind::MovZ);
+}
+
+static void instruction_fetch_fault_test() {
+  static Cpu cpu;
+  cpu.reset();
+  cpu.regs.x[0] = 0xA5A5A5A5A5A5A5A5ull;
+  cpu.regs.pc = Memory::SIZE;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::Memory);
+  assert(cpu.regs.pc == Memory::SIZE);
+  assert(cpu.regs.x[0] == 0xA5A5A5A5A5A5A5A5ull);
+
+  cpu.reset();
+  cpu.regs.x[0] = 0x5A5A5A5A5A5A5A5Aull;
+  cpu.regs.pc = 0x1001;
+  cpu.run(1);
+  assert(cpu.mem.fault() == FaultReason::UnalignedAccess);
+  assert(cpu.regs.pc == 0x1001);
+  assert(cpu.regs.x[0] == 0x5A5A5A5A5A5A5A5Aull);
+}
+
 static void fault_pc_rollback_test() {
   static Cpu cpu;
 
@@ -286,5 +320,7 @@ int main() {
   add_shifted_register_test();
   fault_pc_rollback_test();
   decode_cache_self_modifying_code_test();
+  decode_cache_collision_test();
+  instruction_fetch_fault_test();
   std::cout << "native core regression tests passed\n";
 }
